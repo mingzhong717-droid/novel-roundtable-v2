@@ -495,10 +495,7 @@ async function handleSaveSettings() {
   const cfg = readCurrentConfig();
   saveUserConfig(cfg);
   const keys = await getApiKeys();
-  if (!keys.friday && !keys.deepseek && !keys.openai_compatible) {
-    showNotification('请至少配置一个平台的 API Key', 'warning');
-    return;
-  }
+  // friday 已有内置默认 AppID，不再拦截
   closeSettingsModal();
   showNotification('设置已保存！预估费用: ' + formatCost(estimateCost(cfg)) + '/次', 'success');
 }
@@ -562,12 +559,9 @@ function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 
 async function startRoundtable(topic) {
   if (store.isRoundtableRunning) { showNotification('讨论正在进行中...', 'warning'); return; }
+  // friday 已有内置默认 AppID，无需检查，直接进入讨论流程
   const keys = await getApiKeys();
-  if (!keys.friday && !keys.deepseek && !keys.openai_compatible) {
-    showNotification('请先配置 API Key', 'warning');
-    openSettingsModal();
-    return;
-  }
+  console.log('[NRT] startRoundtable keys:', keys);
 
   openChatPanel();
   store.chatMessages = [];
@@ -835,8 +829,7 @@ async function sendChat() {
 // ===== 追问：多轮对话 =====
 async function followUpRoundtable(question) {
   if (store.isRoundtableRunning) { showNotification('讨论正在进行中...', 'warning'); return; }
-  const keys = await getApiKeys();
-  if (!keys.friday && !keys.deepseek && !keys.openai_compatible) { showNotification('请先配置 API Key', 'warning'); return; }
+  // friday 已有内置默认 AppID，无需检查
 
   store.isRoundtableRunning = true;
   // 追加用户消息到聊天面板
