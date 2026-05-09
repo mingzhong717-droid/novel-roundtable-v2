@@ -90,6 +90,42 @@ const EXPERTS = [
   { id: 'toxic-reader', name: '毒舌读者', emoji: '🔥', temperature: 0.95, systemPrompt: '你是一位资深网文读者，看过5000+本小说，非常毒舌但判断精准。你代表最挑剔的读者视角。\n你的吐槽角度：\n1. 第一印象是想追还是想弃？为什么？\n2. 套路感有多重？（0-10分）能猜到后续发展吗？\n3. 有没有"爽"到你的点？\n4. 最让你出戏/想弃文的地方是什么？\n5. 和同类型热门小说相比，有什么优势/劣势？\n要求：说人话，不要文绉绉；越犀利越好，但要言之有理；可以用网络流行语和梗；明确给出追读意愿评分（1-10）；字数控制在800字以内' }
 ];
 
+// ===== 快捷模板 =====
+const QUICK_TEMPLATES = [
+  {
+    id: 'from-scratch',
+    emoji: '🌱',
+    title: '从零起步',
+    desc: '全方位评估你的新故事构想',
+    prompt: '我有一个新的小说构想，想请各位专家从商业价值、世界观、人物、剧情、文笔等全方位评估。\n\n我的构想是：',
+    experts: 'all' // 全部8位专家
+  },
+  {
+    id: 'genre-confirm',
+    emoji: '🎯',
+    title: '类型确认',
+    desc: '确定题材方向与市场定位',
+    prompt: '我想确认一下小说的类型方向和市场定位，请从商业价值、世界观设定、市场分析角度给出建议。\n\n我目前的想法是：',
+    experts: ['chief-editor', 'world-builder', 'toxic-reader'] // 总编辑+世界观架构师+毒舌读者(市场方向)
+  },
+  {
+    id: 'outline-polish',
+    emoji: '✍️',
+    title: '大纲打磨',
+    desc: '优化故事结构与节奏设计',
+    prompt: '我已经有了大纲初稿，想请专家帮我打磨故事结构、检查逻辑连贯性。\n\n我的大纲是：',
+    experts: ['plot-architect', 'continuity-checker', 'chief-editor'] // 剧情编排师+连续性审查员+总编辑
+  },
+  {
+    id: 'writers-block',
+    emoji: '🚧',
+    title: '卡文求助',
+    desc: '突破写作瓶颈找到灵感',
+    prompt: '我写到这里卡住了，不知道接下来怎么推进，请帮我分析问题并给出突破方向。\n\n目前写到的内容/卡住的地方：',
+    experts: ['dialogue-expert', 'plot-architect', 'style-polisher'] // 对白专家+剧情编排师+文笔润色师
+  }
+];
+
 // ===== 数据持久化 =====
 const STORAGE_KEYS = { API_KEYS: 'roundtable_api_keys_v2', MODEL_CONFIG: 'roundtable_model_config', HISTORY: 'roundtable_history' };
 
@@ -296,6 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initParticles();
   initExperts();
   initMaterials();
+  initQuickTemplates();
   initScrollReveal();
   initEventListeners();
   initSidebar();
@@ -685,6 +722,37 @@ function renderMaterialGrid(cat) {
   `).join('');
 }
 
+// ===== Quick Templates =====
+function initQuickTemplates() {
+  const container = document.getElementById('quickTemplates');
+  if (!container) return;
+  container.innerHTML = QUICK_TEMPLATES.map(t => `
+    <div class="quick-tpl-card" data-tpl-id="${t.id}">
+      <span class="qt-emoji">${t.emoji}</span>
+      <div class="qt-text">
+        <span class="qt-title">${t.title}</span>
+        <span class="qt-desc">${t.desc}</span>
+      </div>
+    </div>
+  `).join('');
+  container.addEventListener('click', function(e) {
+    const card = e.target.closest('.quick-tpl-card');
+    if (!card) return;
+    const tplId = card.dataset.tplId;
+    const tpl = QUICK_TEMPLATES.find(t => t.id === tplId);
+    if (!tpl) return;
+    // 自动填充输入框
+    const input = document.getElementById('creativeInput');
+    if (input) { input.value = tpl.prompt; input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    // 高亮当前卡片
+    container.querySelectorAll('.quick-tpl-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    // 显示提示
+    const expertNames = tpl.experts === 'all' ? '全部 8 位专家' : tpl.experts.map(id => { const ex = EXPERTS.find(e => e.id === id); return ex ? ex.emoji + ex.name : id; }).join('、');
+    showNotification('已切换模板：' + tpl.title + ' → ' + expertNames, 'info');
+  });
+}
+
 // ===== Particle Background (IntersectionObserver 控制，不可见时暂停) =====
 function initParticles() {
   const canvas = document.getElementById('particlesCanvas');
@@ -745,6 +813,7 @@ function initEventListeners() {
 
   // Chat
   document.getElementById('chatClose')?.addEventListener('click', closeChatPanel);
+  document.getElementById('btnChatExport')?.addEventListener('click', exportMarkdown);
   document.getElementById('btnChatSend')?.addEventListener('click', sendChat);
   document.getElementById('chatInput')?.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
 
@@ -838,6 +907,7 @@ async function followUpRoundtable(question) {
   renderChatMessages();
 
   const cfg = getUserConfig();
+  const keys = await getApiKeys();
   const histId = store.currentResults.historyId;
   const hist = getHistory();
   const entry = hist.find(h => h.id === histId);
@@ -927,6 +997,7 @@ function renderSessionList() {
   if (!hist.length) { container.innerHTML = '<div class="session-empty"><p>暂无会话</p><p class="sub">开始讨论后自动保存</p></div>'; return; }
   container.innerHTML = hist.map(h => `
     <div class="session-item" data-id="${h.id}">
+      <span class="session-export" title="导出 Markdown">📥</span>
       <span class="session-delete" title="删除">&times;</span>
       <div class="session-title">${escapeHtml(h.topic.slice(0, 30))}</div>
       <div class="session-time">${new Date(h.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${h.successCount}/8</div>
@@ -939,6 +1010,11 @@ function renderSessionList() {
         const hist = getHistory().filter(h => h.id !== id);
         saveHistory(hist);
         renderSessionList();
+        return;
+      }
+      if (e.target.classList.contains('session-export')) {
+        const id = parseInt(this.dataset.id);
+        exportHistoryEntry(id);
         return;
       }
       const id = parseInt(this.dataset.id);
@@ -1029,36 +1105,37 @@ function restoreSession(id) {
 }
 
 // ===== 导出 Markdown =====
-function exportMarkdown() {
-  if (!store.currentResults || !store.currentResults.results) {
-    showNotification('没有可导出的讨论内容', 'warning');
-    return;
-  }
-  const { topic, results } = store.currentResults;
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10);
-  const timeStr = now.toLocaleString('zh-CN');
+function generateMarkdown(topic, results, timestamp) {
+  const time = timestamp ? new Date(timestamp) : new Date();
+  const timeStr = time.toLocaleString('zh-CN');
 
-  let md = '# 小说圆桌讨论 - ' + (topic || '未命名') + '\n';
-  md += '时间：' + timeStr + '\n\n';
+  let md = '# 小说圆桌讨论 - ' + (topic || '未命名') + '\n\n';
+  md += '> 时间：' + timeStr + '\n\n';
+  md += '---\n\n';
 
   results.forEach(r => {
-    if (!r.expert && !r.expertName) return;
-    const name = r.expert ? r.expert.name : r.expertName;
+    const name = r.expert ? r.expert.name : (r.expertName || '未知');
     const emoji = r.expert ? r.expert.emoji : (r.emoji || '');
     md += '## ' + emoji + ' ' + name + '\n\n';
-    if (r.success && r.content) {
+    if ((r.success !== undefined ? r.success : !r.error) && (r.content)) {
       md += r.content + '\n\n';
     } else if (r.error) {
       md += '> ❌ 失败：' + r.error + '\n\n';
     }
+    md += '---\n\n';
   });
 
-  // 生成文件名
-  const topicSlug = (topic || '').replace(/[\\/:*?"<>|\s]/g, '').slice(0, 10);
-  const filename = 'roundtable_' + dateStr + '_' + (topicSlug || '讨论') + '.md';
+  return md;
+}
 
-  // 下载
+function makeExportFilename(topic, timestamp) {
+  const date = timestamp ? new Date(timestamp) : new Date();
+  const dateStr = date.toISOString().slice(0, 10);
+  const topicSlug = (topic || '').replace(/[\\/:*?"<>|\s]/g, '').slice(0, 15);
+  return 'roundtable_' + dateStr + '_' + (topicSlug || '讨论') + '.md';
+}
+
+function downloadMarkdown(md, filename) {
   const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1069,6 +1146,34 @@ function exportMarkdown() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showNotification('已导出: ' + filename, 'success');
+}
+
+function exportMarkdown() {
+  if (!store.currentResults || !store.currentResults.results) {
+    showNotification('没有可导出的讨论内容', 'warning');
+    return;
+  }
+  const { topic, results } = store.currentResults;
+  const md = generateMarkdown(topic, results);
+  const filename = makeExportFilename(topic);
+  downloadMarkdown(md, filename);
+}
+
+function exportHistoryEntry(id) {
+  const hist = getHistory();
+  const entry = hist.find(h => h.id === id);
+  if (!entry || !entry.results || !entry.results.length) {
+    showNotification('该会话无可导出内容', 'warning');
+    return;
+  }
+  // 将存储格式转为导出格式
+  const results = entry.results.map(r => {
+    if (r.error) return { expertName: r.expertName, emoji: r.emoji, error: r.error };
+    return { expertName: r.expertName, emoji: r.emoji, content: r.content, success: true };
+  });
+  const md = generateMarkdown(entry.topic, results, entry.timestamp);
+  const filename = makeExportFilename(entry.topic, entry.timestamp);
+  downloadMarkdown(md, filename);
 }
 
 // 暴露 exportMarkdown 到全局（因为 onclick 在 IIFE 外）

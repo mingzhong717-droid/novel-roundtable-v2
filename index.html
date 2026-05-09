@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NovelRoundTable - AI 小说创作协作平台</title>
-  <link rel="stylesheet" href="css/style.css?v=2.1.0">
+  <link rel="stylesheet" href="css/style.css?v=2.2.0">
 </head>
 <body>
   <canvas id="particlesCanvas"></canvas>
@@ -56,6 +56,7 @@
           </div>
           <div class="input-area">
             <textarea id="creativeInput" placeholder="描述你的小说方案，如题材、主角设定、核心冲突..."></textarea>
+            <div class="quick-templates" id="quickTemplates"></div>
             <div class="input-actions">
               <div class="input-tips">
                 <span class="tip-tag" data-tip="我想写一个现代都市悬疑故事">🔎 悬疑</span>
@@ -120,7 +121,7 @@
             <span class="footer-sep">·</span>
             <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2/issues" target="_blank">反馈建议</a>
             <span class="footer-sep">·</span>
-            <span class="footer-version">v2.1.0</span>
+            <span class="footer-version">v2.2.0</span>
           </div>
         </div>
       </footer>
@@ -160,6 +161,7 @@
     <div class="chat-header">
       <h3 id="chatTitle">圆桌讨论</h3>
       <div class="chat-experts" id="chatExperts"></div>
+      <button class="btn-chat-export" id="btnChatExport" title="导出当前讨论为 Markdown">📥</button>
       <button class="chat-close" id="chatClose">&times;</button>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
@@ -172,6 +174,6 @@
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
-  <script src="js/main.js?v=2.1.0"></script>
+  <script src="js/main.js?v=2.2.0"></script>
 </body>
 </html>
