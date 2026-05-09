@@ -101,25 +101,26 @@ function getUserConfig() {
 function saveUserConfig(c) { localStorage.setItem(STORAGE_KEYS.MODEL_CONFIG, JSON.stringify(c)); }
 
 // API Keys: 加密存储 (async)
+const DEFAULT_FRIDAY_APPID = '22041715054660149263';
 let _cachedKeys = null;
 function normalizeKeys(raw) {
   return { friday: raw.friday || '', deepseek: raw.deepseek || '', openai_compatible: raw.openai_compatible || '', customUrl: raw.customUrl || '' };
 }
 async function getApiKeys() {
-  if (_cachedKeys) return _cachedKeys;
+  if (_cachedKeys) return { ..._cachedKeys, friday: _cachedKeys.friday || DEFAULT_FRIDAY_APPID };
   const s = localStorage.getItem(STORAGE_KEYS.API_KEYS);
-  if (!s) return { friday: '', deepseek: '', openai_compatible: '', customUrl: '' };
+  if (!s) return { friday: DEFAULT_FRIDAY_APPID, deepseek: '', openai_compatible: '', customUrl: '' };
   // 尝试解密（新格式）
   const decrypted = await CryptoStore.decrypt(s);
-  if (decrypted) { try { _cachedKeys = normalizeKeys(JSON.parse(decrypted)); return _cachedKeys; } catch(e) {} }
+  if (decrypted) { try { _cachedKeys = normalizeKeys(JSON.parse(decrypted)); return { ..._cachedKeys, friday: _cachedKeys.friday || DEFAULT_FRIDAY_APPID }; } catch(e) {} }
   // 兼容旧明文格式：读取后自动迁移为加密
   try {
     const old = normalizeKeys(JSON.parse(s));
     _cachedKeys = old;
     await saveApiKeys(old); // 自动加密迁移
-    return old;
+    return { ...old, friday: old.friday || DEFAULT_FRIDAY_APPID };
   } catch(e) {}
-  return { friday: '', deepseek: '', openai_compatible: '', customUrl: '' };
+  return { friday: DEFAULT_FRIDAY_APPID, deepseek: '', openai_compatible: '', customUrl: '' };
 }
 async function saveApiKeys(k) {
   _cachedKeys = k;
@@ -282,10 +283,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ===== Settings Modal =====
-function openSettingsModal() {
+async function openSettingsModal() {
   const overlay = document.getElementById('settingsOverlay');
   if (!overlay) return;
-  renderSettingsModal();
+  await renderSettingsModal();
   overlay.classList.add('active');
 }
 function closeSettingsModal() {
@@ -293,11 +294,11 @@ function closeSettingsModal() {
   if (overlay) overlay.classList.remove('active');
 }
 
-function renderSettingsModal() {
+async function renderSettingsModal() {
   const body = document.querySelector('#settingsModal .modal-body');
   if (!body) return;
   const cfg = getUserConfig();
-  const keys = getApiKeys();
+  const keys = await getApiKeys();
   const tierLabels = { free: '🆓 免费', budget: '💰 经济 (¥0.5-¥3/百万token)', standard: '🏆 标准 (¥3-¥10)', premium: '👑 高端 (¥10+)' };
 
   function modelOpts(sel) {
