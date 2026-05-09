@@ -556,6 +556,8 @@ body {
 .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-element); flex-wrap: wrap; gap: 8px; }
 .results-header h3 { font-size: var(--text-base); font-weight: 700; }
 .results-meta { font-size: var(--text-xs); color: var(--text-muted); }
+.btn-export { background: rgba(108, 92, 231, 0.15); border: 1px solid rgba(108, 92, 231, 0.3); color: var(--text-secondary); font-size: var(--text-xs); padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); white-space: nowrap; }
+.btn-export:hover { background: rgba(108, 92, 231, 0.3); color: var(--text-primary); }
 .result-cards { display: flex; flex-direction: column; gap: 12px; }
 .result-card {
   background: rgba(15, 15, 35, 0.5); border: 1px solid var(--border);
