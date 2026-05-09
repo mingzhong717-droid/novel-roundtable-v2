@@ -234,7 +234,7 @@ body {
   font-size: 12px; color: var(--text-secondary);
   cursor: pointer; transition: var(--transition);
 }
-.tip-tag:hover { background: rgba(108, 92, 231, 0.2); border-color: var(--primary); color: var(--primary-light); }
+.tip-tag:hover, .tip-tag.active { background: rgba(108, 92, 231, 0.2); border-color: var(--primary); color: var(--primary-light); }
 .btn-submit {
   padding: 12px 28px; background: var(--gradient-1);
   border: none; border-radius: var(--radius);
@@ -483,6 +483,77 @@ body {
 @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100px); opacity: 0; } }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== Light Theme ===== */
+body.light-theme {
+  --bg-dark: #f5f6fa;
+  --bg-card: #ffffff;
+  --bg-sidebar: #ffffff;
+  --text-primary: #2d3436;
+  --text-secondary: #636e72;
+  --text-muted: #b2bec3;
+  --border: rgba(108, 92, 231, 0.15);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+body.light-theme .top-bar {
+  background: rgba(245, 246, 250, 0.9);
+}
+body.light-theme .chat-message .msg-text {
+  background: rgba(245, 246, 250, 0.8);
+}
+body.light-theme .notification {
+  box-shadow: 0 8px 30px rgba(108, 92, 231, 0.2);
+}
+
+/* ===== Expert Info Modal (All Experts) ===== */
+.expert-info-modal .expert-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.expert-info-modal .expert-info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(108, 92, 231, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.expert-info-modal .expert-info-item .ei-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.expert-info-modal .expert-info-item .ei-text h5 {
+  font-size: 14px; font-weight: 600; margin-bottom: 2px;
+}
+.expert-info-modal .expert-info-item .ei-text p {
+  font-size: 12px; color: var(--text-muted);
+}
+
+/* ===== Chat Guidance ===== */
+.chat-guidance {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-muted);
+}
+.chat-guidance .cg-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.chat-guidance h4 {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.chat-guidance p {
+  font-size: 13px;
+  line-height: 1.7;
+}
 
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
