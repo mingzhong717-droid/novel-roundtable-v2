@@ -393,13 +393,14 @@ body {
   border-radius: var(--radius-lg); padding: 0;
   width: 90%; max-width: 600px; max-height: 80vh;
   overflow-y: auto; transform: scale(0.9); transition: transform 0.3s ease;
+  position: relative;
 }
 .modal-overlay.active .modal { transform: scale(1); }
 .modal-close {
   position: absolute; top: 16px; right: 16px;
   background: none; border: none; color: var(--text-muted);
   font-size: 28px; cursor: pointer; transition: var(--transition);
-  line-height: 1;
+  line-height: 1; z-index: 10;
 }
 .modal-close:hover { color: var(--text-primary); }
 .modal-header { padding: 32px 32px 0; position: relative; }
