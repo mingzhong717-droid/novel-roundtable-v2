@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NovelRoundTable - AI &#23567;&#35828;&#21019;&#20316;&#21327;&#20316;&#24179;&#21488;</title>
+  <title>NovelRoundTable - AI 小说创作协作平台</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,24 +11,27 @@
   <button class="mobile-menu-btn" id="mobileMenuBtn"><span></span><span></span><span></span></button>
 
   <div class="app-container">
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
+    <!-- Sidebar (collapsed by default) -->
+    <aside class="sidebar collapsed" id="sidebar">
+      <button class="sidebar-toggle" id="sidebarToggle" title="展开/收起侧栏">
+        <span class="toggle-icon">☰</span>
+      </button>
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <div class="logo-icon">&#9997;</div>
+          <div class="logo-icon">✍</div>
           <h1>NovelRoundTable</h1>
         </div>
-        <button class="btn-new-session" id="btnNewSession"><span>+</span> &#26032;&#24314;&#22278;&#26700;&#20250;</button>
+        <button class="btn-new-session" id="btnNewSession"><span>+</span> 新建圆桌会</button>
       </div>
       <div class="sidebar-sessions" id="sessionList">
-        <div class="session-empty"><p>&#26242;&#26080;&#20250;&#35805;</p><p class="sub">&#28857;&#20987;&#19978;&#26041;&#25353;&#38062;&#21019;&#24314;</p></div>
+        <div class="session-empty"><p>暂无会话</p><p class="sub">开始讨论后自动保存</p></div>
       </div>
       <div class="sidebar-tools">
-        <h3>&#21151;&#33021;&#24037;&#20855;</h3>
-        <div class="tool-item" data-action="upload"><div class="tool-icon">&#128196;</div><div class="tool-info"><h4>&#19978;&#20256;&#22823;&#32434;/&#33609;&#31295;</h4><p>&#23548;&#20837;&#29616;&#26377;&#25991;&#26723;</p></div></div>
-        <div class="tool-item" data-action="mindmap"><div class="tool-icon">&#129504;</div><div class="tool-info"><h4>&#35752;&#35770;&#24605;&#32500;&#23548;&#22270;</h4><p>&#21487;&#35270;&#21270;&#21019;&#20316;&#33033;&#32476;</p></div></div>
-        <div class="tool-item" data-action="download"><div class="tool-icon">&#128229;</div><div class="tool-info"><h4>&#23567;&#35828;&#33609;&#31295;&#19979;&#36733;</h4><p>&#19968;&#38190;&#23548;&#20986; Word/TXT</p></div></div>
-        <div class="tool-item" data-action="analyze"><div class="tool-icon">&#128202;</div><div class="tool-info"><h4>&#26234;&#33021;&#20998;&#26512;</h4><p>&#33410;&#22863;/&#20154;&#29289;/&#24773;&#33410;&#20998;&#26512;</p></div></div>
+        <h3>功能工具</h3>
+        <div class="tool-item coming-soon" data-action="upload"><div class="tool-icon">📄</div><div class="tool-info"><h4>上传大纲/草稿</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
+        <div class="tool-item coming-soon" data-action="mindmap"><div class="tool-icon">🧠</div><div class="tool-info"><h4>讨论思维导图</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
+        <div class="tool-item coming-soon" data-action="download"><div class="tool-icon">📥</div><div class="tool-info"><h4>小说草稿下载</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
+        <div class="tool-item coming-soon" data-action="analyze"><div class="tool-icon">📊</div><div class="tool-info"><h4>智能分析</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
       </div>
     </aside>
 
@@ -36,116 +39,60 @@
     <main class="main-content" id="mainContent">
       <!-- Top Bar -->
       <div class="top-bar">
-        <div class="top-bar-title">&#23567;&#35828;&#21019;&#20316;&#22278;&#26700;&#20250;</div>
+        <div class="top-bar-title">小说创作圆桌会</div>
         <div class="top-bar-actions">
-          <button id="btnExpertInfo">&#19987;&#23478;&#35828;&#26126;</button>
-          <button id="btnSettings" class="btn-settings">&#9881; &#35774;&#32622;</button>
-          <button id="btnTheme" class="btn-theme">&#127769;</button>
+          <button id="btnExpertInfo">专家说明</button>
+          <button id="btnSettings" class="btn-settings">⚙ 设置</button>
+          <button id="btnTheme" class="btn-theme" title="切换浅色/深色主题">🌙</button>
         </div>
       </div>
 
-      <!-- Progress Bar -->
-      <div class="progress-bar">
-        <div class="progress-steps">
-          <div class="progress-step active" data-stage="ideation"><span class="step-dot"></span>&#26500;&#24605;</div>
-          <div class="progress-connector"></div>
-          <div class="progress-step" data-stage="outline"><span class="step-dot"></span>&#22823;&#32434;</div>
-          <div class="progress-connector"></div>
-          <div class="progress-step" data-stage="writing"><span class="step-dot"></span>&#21019;&#20316;</div>
-          <div class="progress-connector"></div>
-          <div class="progress-step" data-stage="final"><span class="step-dot"></span>&#23436;&#31295;</div>
-        </div>
-      </div>
-
-      <!-- Hero Section -->
-      <section class="hero-section scroll-reveal">
-        <div class="hero-badge">&#128640; NovelRoundTable</div>
-        <h1 class="hero-title">AI &#23567;&#35828;&#21019;&#20316;&#21327;&#20316;&#24179;&#21488;</h1>
-        <p class="hero-subtitle">&#20840;&#29699;&#39318;&#20010;&#22810; AI &#35282;&#33394;&#21327;&#20316;&#30340;&#23567;&#35828;&#21019;&#20316;&#24179;&#21488;&#65292;&#20174;&#26500;&#24605;&#21040;&#23436;&#31295;&#65292;12 &#20301; AI &#21019;&#20316;&#19987;&#23478;&#20840;&#31243;&#38506;&#20276;</p>
-        <div class="hero-stats">
-          <div class="stat-item"><div class="stat-number" data-target="12" data-suffix="">0</div><div class="stat-label">AI &#21019;&#20316;&#19987;&#23478;</div></div>
-          <div class="stat-item"><div class="stat-number" data-target="48" data-suffix="+">0</div><div class="stat-label">&#19987;&#19994;&#25216;&#33021;&#28857;&#65288;12&#215;4&#65289;</div></div>
-          <div class="stat-item"><div class="stat-number" data-target="6" data-suffix="">0</div><div class="stat-label">&#32032;&#26448;&#24211;&#20998;&#31867;</div></div>
-          <div class="stat-item"><div class="stat-number" data-target="5000" data-suffix="+">0</div><div class="stat-label">&#32032;&#26448;&#26465;&#30446;&#24635;&#37327;</div></div>
-        </div>
-      </section>
-
-      <!-- Creative Input -->
+      <!-- Creative Input (Primary Focus) -->
       <section class="creative-input-section scroll-reveal">
         <div class="input-container">
           <div class="input-header">
-            <h3>&#128161; &#35828;&#20986;&#20320;&#30340;&#21019;&#20316;&#24819;&#27861;</h3>
-            <p>&#25551;&#36848;&#20320;&#24819;&#20889;&#30340;&#25925;&#20107;&#65292;AI &#19987;&#23478;&#22242;&#38431;&#23558;&#20026;&#20320;&#25552;&#20379;&#19987;&#19994;&#24314;&#35758;</p>
+            <h3>💡 说出你的创作想法</h3>
+            <p>描述你想写的故事，8 位 AI 专家将并行给出专业评估</p>
           </div>
           <div class="input-area">
-            <textarea id="creativeInput" placeholder="&#20363;&#22914;&#65306;&#25105;&#24819;&#20889;&#19968;&#20010;&#29616;&#20195;&#37117;&#24066;&#24748;&#30097;&#25925;&#20107;&#65292;&#20027;&#35282;&#26159;&#19968;&#20010;&#22833;&#24518;&#30340;&#24515;&#29702;&#21672;&#35810;&#24072;&#65292;&#22312;&#24110;&#21161;&#24739;&#32773;&#30340;&#36807;&#31243;&#20013;&#36880;&#28176;&#21457;&#29616;&#33258;&#24049;&#30340;&#36807;&#21435;..."></textarea>
+            <textarea id="creativeInput" placeholder="描述你的小说方案，如题材、主角设定、核心冲突..."></textarea>
             <div class="input-actions">
               <div class="input-tips">
-                <span class="tip-tag" data-tip="&#25105;&#24819;&#20889;&#19968;&#20010;&#29616;&#20195;&#37117;&#24066;&#24748;&#30097;&#25925;&#20107;">&#128270; &#24748;&#30097;</span>
-                <span class="tip-tag" data-tip="&#25105;&#24819;&#20889;&#19968;&#20010;&#21476;&#20195;&#20185;&#20384;&#20462;&#28860;&#25925;&#20107;">&#128481; &#20185;&#20384;</span>
-                <span class="tip-tag" data-tip="&#25105;&#24819;&#20889;&#19968;&#20010;&#29980;&#23456;&#35328;&#24773;&#25925;&#20107;">&#128149; &#35328;&#24773;</span>
-                <span class="tip-tag" data-tip="&#25105;&#24819;&#20889;&#19968;&#20010;&#26410;&#26469;&#31185;&#24187;&#25925;&#20107;">&#128640; &#31185;&#24187;</span>
+                <span class="tip-tag" data-tip="我想写一个现代都市悬疑故事">🔎 悬疑</span>
+                <span class="tip-tag" data-tip="我想写一个古代仙侠修炼故事">🗡 仙侠</span>
+                <span class="tip-tag" data-tip="我想写一个甜宠言情故事">💕 言情</span>
+                <span class="tip-tag" data-tip="我想写一个未来科幻故事">🚀 科幻</span>
               </div>
-              <button class="btn-submit" id="btnSubmitIdea"><span>&#9889;</span> &#24320;&#22987;&#22278;&#26700;&#35752;&#35770;</button>
+              <button class="btn-submit" id="btnSubmitIdea"><span>⚡</span> 开始圆桌讨论</button>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Quick Entry -->
-      <section class="quick-entry scroll-reveal">
-        <h2>&#19968;&#21477;&#21019;&#20316;&#24819;&#27861;&#21363;&#21487;&#24320;&#22987;&#65292;&#25110;&#32773;&#20808;&#36873; 1 &#20301;&#19987;&#23478;</h2>
-        <p>&#30452;&#25509;&#24320;&#20250;&#21487;&#20197;&#65292;&#20808;&#25361;&#39318;&#20301;&#20171;&#20837;&#19987;&#23478;&#20063;&#21487;&#20197;&#12290;&#24179;&#21488;&#20250;&#25353;&#20320;&#30340;&#20837;&#21475;&#32487;&#32493;&#23637;&#24320;&#21518;&#32493;&#21327;&#20316;&#12290;</p>
-        <div class="entry-buttons">
-          <button class="btn-entry primary" id="btnAllExperts">&#127917; &#19968;&#38190;&#36827;&#20837; 12 &#20301;&#19987;&#23478;&#35752;&#35770;</button>
-          <button class="btn-entry secondary" id="btnCreateRound">&#10024; &#31435;&#21363;&#21019;&#24314;&#22278;&#26700;&#20250;</button>
-          <button class="btn-entry accent" id="btnViewMaterials">&#128218; &#20808;&#30475;&#32032;&#26448;&#24211;&#19982;&#21019;&#20316;&#36335;&#24452;</button>
-          <button class="btn-entry secondary" id="btnViewExperts">&#128269; &#19981;&#30830;&#23450;&#20808;&#25214;&#35841;&#65311;&#20808;&#30475; 12 &#20301;&#19987;&#23478;</button>
-        </div>
-      </section>
-
-      <div class="section-divider"></div>
-
       <!-- Expert Cards -->
       <section class="experts-section scroll-reveal" id="expertSection">
         <div class="section-header">
-          <h2>12 &#20301;&#21019;&#20316;&#19987;&#23478;&#65292;&#20808;&#24110;&#20320;&#21028;&#26029;&#36825;&#19968;&#27493;&#35813;&#25214;&#35841;</h2>
-          <p>&#22914;&#26524;&#20320;&#29616;&#22312;&#21345;&#22312;&#36873;&#39064;&#12289;&#20154;&#35774;&#12289;&#19990;&#30028;&#35266;&#12289;&#24773;&#33410;&#25110;&#25991;&#31508;&#65292;&#20808;&#28857;&#19968;&#20301;&#26368;&#25509;&#36817;&#24403;&#21069;&#38382;&#39064;&#30340;&#19987;&#23478;&#12290;</p>
+          <h2>8 位创作专家</h2>
+          <p>每位专家从不同维度评估你的小说方案，点击查看详情</p>
           <div class="expert-filter">
-            <button class="filter-btn active" data-filter="all">&#20840;&#37096;</button>
-            <button class="filter-btn" data-filter="core">&#26680;&#24515;&#22242;&#38431;</button>
-            <button class="filter-btn" data-filter="genre">&#31867;&#22411;&#19987;&#23478;</button>
-            <button class="filter-btn" data-filter="support">&#25903;&#25345;&#22242;&#38431;</button>
+            <button class="filter-btn active" data-filter="all">全部</button>
+            <button class="filter-btn" data-filter="core">核心团队</button>
+            <button class="filter-btn" data-filter="genre">类型专家</button>
+            <button class="filter-btn" data-filter="support">支持团队</button>
           </div>
         </div>
 
         <div class="expert-group" data-group="core">
-          <div class="expert-group-header"><h3>&#26680;&#24515;&#21019;&#20316;&#22242;&#38431;</h3><span class="group-badge">5 &#20301; - &#39537;&#21160;&#25925;&#20107;&#26680;&#24515;</span></div>
+          <div class="expert-group-header"><h3>核心创作团队</h3><span class="group-badge">4 位</span></div>
           <div class="expert-grid" id="coreGrid"></div>
         </div>
         <div class="expert-group" data-group="genre">
-          <div class="expert-group-header"><h3>&#31867;&#22411;&#27969;&#27966;&#19987;&#23478;&#32452;</h3><span class="group-badge">4 &#20301; - &#25915;&#20811;&#31867;&#22411;&#22721;&#22418;</span></div>
+          <div class="expert-group-header"><h3>类型流派专家组</h3><span class="group-badge">2 位</span></div>
           <div class="expert-grid" id="genreGrid"></div>
         </div>
         <div class="expert-group" data-group="support">
-          <div class="expert-group-header"><h3>&#19987;&#19994;&#25903;&#25345;&#22242;&#38431;</h3><span class="group-badge">3 &#20301; - &#20445;&#38556;&#20316;&#21697;&#36136;&#37327;</span></div>
+          <div class="expert-group-header"><h3>专业支持团队</h3><span class="group-badge">2 位</span></div>
           <div class="expert-grid" id="supportGrid"></div>
-        </div>
-      </section>
-
-      <div class="section-divider"></div>
-
-      <!-- Capability Overview -->
-      <section class="capability-overview scroll-reveal">
-        <div class="section-header">
-          <h2>&#20808;&#30475;&#28165;&#24179;&#21488;&#33021;&#25509;&#20160;&#20040;&#32032;&#26448;&#12289;&#33021;&#20570;&#20160;&#20040;&#21019;&#20316;&#12289;&#26368;&#21518;&#20132;&#20184;&#20160;&#20040;</h2>
-          <p>&#25226;&#33021;&#21147;&#25286;&#25104; 4 &#20010;&#32500;&#24230;&#65306;&#26469;&#28304;&#12289;&#32032;&#26448;&#24211;&#12289;&#21019;&#20316;&#36335;&#24452;&#65292;&#20197;&#21450;&#35841;&#36866;&#21512;&#20808;&#20171;&#20837;&#12290;</p>
-        </div>
-        <div class="capability-grid">
-          <div class="capability-card"><div class="cap-icon">&#128218;</div><div class="cap-number" data-target="36" data-suffix="">0</div><div class="cap-label">&#32032;&#26448;&#25968;&#25454;&#24211;</div><div class="cap-desc">8 &#31867;&#32032;&#26448;&#24211;&#24050;&#32534;&#30446;</div></div>
-          <div class="capability-card"><div class="cap-icon">&#128740;</div><div class="cap-number" data-target="10" data-suffix="">0</div><div class="cap-label">&#21019;&#20316;&#36335;&#24452;</div><div class="cap-desc">&#27599;&#26465;&#20889;&#26126;&#36866;&#29992;&#22330;&#26223;</div></div>
-          <div class="capability-card"><div class="cap-icon">&#129309;</div><div class="cap-number" data-target="12" data-suffix="">0</div><div class="cap-label">&#21327;&#20316;&#35282;&#33394;</div><div class="cap-desc">3 &#32452;&#19987;&#23478;&#22242;&#38431;</div></div>
-          <div class="capability-card"><div class="cap-icon">&#128230;</div><div class="cap-number" data-target="4" data-suffix="">0</div><div class="cap-label">&#33021;&#21147;&#26469;&#28304;&#21253;</div><div class="cap-desc">580+ &#39033;&#25216;&#33021;&#21487;&#35843;&#29992;</div></div>
         </div>
       </section>
 
@@ -154,32 +101,28 @@
       <!-- Material Library -->
       <section class="material-library scroll-reveal" id="materials">
         <div class="section-header">
-          <h2>36 &#20010;&#32032;&#26448;&#24211;&#24050;&#25353;&#21019;&#20316;&#22330;&#26223;&#20998;&#32452;</h2>
-          <p>&#27599;&#20010;&#20998;&#31867;&#37117;&#21015;&#20986;&#30495;&#23454;&#32032;&#26448;&#21517;&#31216;&#65292;&#20320;&#19981;&#29992;&#29468;&#24179;&#21488;&#26377;&#20160;&#20040;&#65292;&#39318;&#39029;&#23601;&#33021;&#20808;&#30475;&#28165;&#26970;&#12290;</p>
+          <h2>创作素材库</h2>
+          <p>按创作场景分组的素材参考，帮助你快速构建故事世界</p>
+        </div>
+        <div class="material-search-box">
+          <input type="text" id="materialSearch" placeholder="搜索素材..." class="material-search-input"/>
         </div>
         <div class="material-tabs" id="materialTabs"></div>
         <div class="material-grid" id="materialGrid"></div>
       </section>
 
-      <div class="section-divider"></div>
-
-      <!-- Source Packages -->
-      <section class="source-packages scroll-reveal" id="packages">
-        <div class="section-header">
-          <h2>&#33021;&#21147;&#26469;&#28304;&#20998;&#25104; 4 &#32452;</h2>
-          <p>&#30452;&#25509;&#20132;&#20195;&#33021;&#21147;&#26469;&#28304;&#65292;&#35753;&#20320;&#30693;&#36947;&#21738;&#20123;&#26159;&#24179;&#21488;&#21407;&#29983;&#33021;&#21147;&#12289;&#21738;&#20123;&#26469;&#33258; AI &#27169;&#22411;&#23618;&#12290;</p>
-        </div>
-        <div class="package-grid">
-          <div class="package-card"><div class="pkg-header"><h4>NovelRT Core</h4><span class="pkg-count">18</span></div><p class="pkg-desc">&#22278;&#26700;&#21019;&#24314;&#12289;&#21327;&#20316;&#36335;&#30001;&#12289;&#23548;&#20986;&#12289;&#25490;&#29256;&#27169;&#26495;&#21644;&#22810;&#35282;&#33394;&#20250;&#35805;&#20013;&#26530;&#12290;</p><span class="pkg-tag">Native - &#26680;&#24515;&#23618;</span></div>
-          <div class="package-card"><div class="pkg-header"><h4>Creative AI Skills</h4><span class="pkg-count">520</span></div><p class="pkg-desc">&#22260;&#32469;&#21019;&#24847;&#20889;&#20316;&#12289;&#21465;&#20107;&#25216;&#24039;&#12289;&#35282;&#33394;&#22609;&#36896;&#21644;&#24773;&#33410;&#32534;&#25490;&#30340; AI &#22686;&#24378;&#33021;&#21147;&#12290;</p><span class="pkg-tag">AI - &#21019;&#20316;&#24341;&#25806;</span></div>
-          <div class="package-card"><div class="pkg-header"><h4>Genre Templates</h4><span class="pkg-count">180</span></div><p class="pkg-desc">&#21508;&#31867;&#22411;&#23567;&#35828;&#30340;&#32467;&#26500;&#27169;&#26495;&#12289;&#33410;&#22863;&#26354;&#32447;&#21644;&#35835;&#32773;&#26399;&#24453;&#31649;&#29702;&#26041;&#26696;&#12290;</p><span class="pkg-tag">Template - &#31867;&#22411;&#24211;</span></div>
-          <div class="package-card"><div class="pkg-header"><h4>Publishing Toolkit</h4><span class="pkg-count">85</span></div><p class="pkg-desc">&#25490;&#29256;&#23548;&#20986;&#12289;&#24179;&#21488;&#36866;&#37197;&#12289;&#23553;&#38754;&#29983;&#25104;&#21644;&#21457;&#24067;&#27969;&#31243;&#33258;&#21160;&#21270;&#24037;&#20855;&#12290;</p><span class="pkg-tag">Export - &#21457;&#24067;&#23618;</span></div>
-        </div>
-      </section>
-
       <!-- Footer -->
       <footer class="footer">
-        <p>NovelRoundTable - &#23567;&#35828;&#21019;&#20316; AI &#21327;&#20316;&#24179;&#21488; - &#35753;&#27599;&#19968;&#20010;&#25925;&#20107;&#37117;&#20540;&#24471;&#34987;&#35762;&#36848;</p>
+        <div class="footer-content">
+          <p>NovelRoundTable v2.0 - 小说创作 AI 协作平台</p>
+          <div class="footer-links">
+            <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2" target="_blank">GitHub</a>
+            <span class="footer-sep">·</span>
+            <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2/issues" target="_blank">反馈建议</a>
+            <span class="footer-sep">·</span>
+            <span class="footer-version">v2.0.0</span>
+          </div>
+        </div>
       </footer>
     </main>
   </div>
@@ -191,8 +134,8 @@
       <div class="modal-header" id="modalHeader"></div>
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-footer">
-        <button class="btn-entry primary" id="modalInvite">&#35753; TA &#21152;&#20837;&#22278;&#26700;&#20250;</button>
-        <button class="btn-entry secondary" id="modalCancel">&#20851;&#38381;</button>
+        <button class="btn-entry primary" id="modalInvite">让 TA 加入圆桌会</button>
+        <button class="btn-entry secondary" id="modalCancel">关闭</button>
       </div>
     </div>
   </div>
@@ -215,14 +158,14 @@
   <!-- Chat Panel (Roundtable Discussion) -->
   <div class="chat-panel" id="chatPanel">
     <div class="chat-header">
-      <h3 id="chatTitle">&#22278;&#26700;&#35752;&#35770;</h3>
+      <h3 id="chatTitle">圆桌讨论</h3>
       <div class="chat-experts" id="chatExperts"></div>
       <button class="chat-close" id="chatClose">&times;</button>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-input-area">
-      <textarea id="chatInput" placeholder="&#36755;&#20837;&#20320;&#30340;&#24819;&#27861;&#25110;&#38382;&#39064;..."></textarea>
-      <button class="btn-chat-send" id="btnChatSend">&#21457;&#36865;</button>
+      <textarea id="chatInput" placeholder="输入你的想法或问题..."></textarea>
+      <button class="btn-chat-send" id="btnChatSend">发送</button>
     </div>
   </div>
 

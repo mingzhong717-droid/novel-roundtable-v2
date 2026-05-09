@@ -191,7 +191,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initMaterials();
   initScrollReveal();
   initEventListeners();
-  initNumberAnimations();
+  initSidebar();
+  initSessions();
 });
 
 // ===== Settings Modal =====
@@ -275,7 +276,12 @@ function renderSettingsModal() {
         <div class="custom-global"><label>基础预设</label><select id="hybridBase">${Object.entries(PRESETS).map(([k,p]) => `<option value="${k}" ${cfg.basePreset === k ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
         <label class="settings-section-title" style="margin-top:12px">局部覆盖（选择需要替换的专家）</label>
         <div class="expert-model-grid">
-          ${EXPERTS.map(e => `<div class="expert-model-row"><span class="emr-emoji">${e.emoji}</span><span class="emr-name">${e.name}</span><select class="emr-override" data-expert="${e.id}"><option value="">使用预设</option>${modelOpts(cfg.overrides[e.id] || '')}</select></div>`).join('')}
+          ${EXPERTS.map(e => {
+            const basePreset = PRESETS[cfg.basePreset || 'free'].config;
+            const currentModel = cfg.overrides[e.id] || basePreset.overrides[e.id] || basePreset.default;
+            const currentName = AVAILABLE_MODELS[currentModel] ? AVAILABLE_MODELS[currentModel].name : currentModel;
+            return `<div class="expert-model-row"><span class="emr-emoji">${e.emoji}</span><span class="emr-name">${e.name}</span><select class="emr-override" data-expert="${e.id}"><option value="">预设: ${currentName}</option>${modelOpts(cfg.overrides[e.id] || '')}</select></div>`;
+          }).join('')}
         </div>
       </div>
 
@@ -487,6 +493,9 @@ async function startRoundtable(topic) {
   const sc = result.results.filter(r => r.success).length;
   if (sc === 8) showNotification('✅ 8 位专家全部完成！', 'success');
   else showNotification('⚠️ ' + sc + '/8 完成，部分失败', 'warning');
+
+  // Update session list
+  renderSessionList();
 }
 
 // ===== Expert Display Data (for homepage cards) =====
@@ -521,7 +530,6 @@ function renderExpertGroup(group, container) {
       <div class="expert-card-top">
         <div class="expert-avatar ${expert.color}">${expert.icon}</div>
         <div class="expert-meta"><h4>${expert.name}</h4><p>${expert.subtitle}</p></div>
-        <div class="expert-status online"></div>
       </div>
       <div class="expert-scenario">${expert.scenario}</div>
       <div class="expert-skills">${expert.skills.map(s => '<span class="skill-tag">' + s + '</span>').join('')}</div>
@@ -603,22 +611,12 @@ function initParticles() {
   animate();
 }
 
-// ===== Scroll Reveal & Numbers =====
+// ===== Scroll Reveal =====
 function initScrollReveal() {
   const obs = new IntersectionObserver(entries => {
-    entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); animateNumbers(entry.target); } });
+    entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); } });
   }, { threshold: 0.15 });
   document.querySelectorAll('.scroll-reveal').forEach(el => obs.observe(el));
-}
-function initNumberAnimations() {}
-function animateNumbers(container) {
-  container.querySelectorAll('[data-target]').forEach(el => {
-    if (el.dataset.animated) return;
-    el.dataset.animated = 'true';
-    const target = parseInt(el.dataset.target), suffix = el.dataset.suffix || '';
-    let cur = 0; const inc = Math.ceil(target / 40);
-    const timer = setInterval(() => { cur += inc; if (cur >= target) { cur = target; clearInterval(timer); } el.textContent = cur + suffix; }, 25);
-  });
 }
 
 // ===== Event Listeners =====
@@ -640,11 +638,6 @@ function initEventListeners() {
   document.getElementById('btnChatSend')?.addEventListener('click', sendChat);
   document.getElementById('chatInput')?.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
 
-  // Quick entry buttons
-  document.getElementById('btnAllExperts')?.addEventListener('click', () => { const input = document.getElementById('creativeInput'); if (input && input.value.trim()) submitIdea(); else { showNotification('请先输入创作想法', 'warning'); input?.focus(); } });
-  document.getElementById('btnCreateRound')?.addEventListener('click', () => { showNotification('请在输入框描述你的小说方案，然后点击"开始圆桌讨论"'); document.getElementById('creativeInput')?.focus(); });
-  document.getElementById('btnViewMaterials')?.addEventListener('click', () => document.getElementById('materials')?.scrollIntoView({ behavior: 'smooth' }));
-  document.getElementById('btnViewExperts')?.addEventListener('click', () => document.getElementById('expertSection')?.scrollIntoView({ behavior: 'smooth' }));
 
   // Expert info
   document.getElementById('btnExpertInfo')?.addEventListener('click', showExpertInfoModal);
@@ -656,6 +649,9 @@ function initEventListeners() {
 
   // Mobile menu
   document.getElementById('mobileMenuBtn')?.addEventListener('click', function() { this.classList.toggle('active'); document.getElementById('sidebar')?.classList.toggle('open'); });
+
+  // Material search
+  document.getElementById('materialSearch')?.addEventListener('input', function() { filterMaterials(this.value.trim()); });
 
   // Theme
   document.getElementById('btnTheme')?.addEventListener('click', toggleTheme);
@@ -680,18 +676,13 @@ function initEventListeners() {
     });
   });
 
-  // Tools
-  document.querySelectorAll('.tool-item').forEach(item => {
-    item.addEventListener('click', function() { showNotification('功能开发中，敬请期待', 'warning'); });
+  // Tools (coming soon - no action)
+  document.querySelectorAll('.tool-item.coming-soon').forEach(item => {
+    item.addEventListener('click', function(e) { e.preventDefault(); });
   });
 
   // New session
-  document.getElementById('btnNewSession')?.addEventListener('click', () => { chatMessages = []; renderChatMessages(); showNotification('新圆桌会已创建'); });
-
-  // Progress steps
-  document.querySelectorAll('.progress-step').forEach(step => {
-    step.addEventListener('click', function() { updateProgressBar(this.dataset.stage); });
-  });
+  document.getElementById('btnNewSession')?.addEventListener('click', () => { chatMessages = []; renderChatMessages(); openChatPanel(); showNotification('新圆桌会已创建'); });
 
   // Escape
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeModal(); closeSettingsModal(); closeChatPanel(); } });
@@ -732,12 +723,61 @@ function showExpertInfoModal() {
 }
 function closeModal() { document.getElementById('modalOverlay')?.classList.remove('active'); document.getElementById('modalInvite').style.display = ''; }
 
-// ===== Progress Bar =====
-function updateProgressBar(stage) {
-  const stages = ['ideation', 'outline', 'writing', 'final'];
-  const idx = stages.indexOf(stage);
-  document.querySelectorAll('.progress-step').forEach((step, i) => { step.classList.remove('active', 'completed'); if (i < idx) step.classList.add('completed'); else if (i === idx) step.classList.add('active'); });
-  document.querySelectorAll('.progress-connector').forEach((conn, i) => { conn.classList.toggle('completed', i < idx); });
+// ===== Sidebar =====
+function initSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('sidebarToggle');
+  if (!sidebar || !toggle) return;
+  toggle.addEventListener('click', function() {
+    sidebar.classList.toggle('collapsed');
+    this.querySelector('.toggle-icon').textContent = sidebar.classList.contains('collapsed') ? '☰' : '✕';
+  });
+}
+
+// ===== Sessions =====
+function initSessions() {
+  renderSessionList();
+}
+function renderSessionList() {
+  const container = document.getElementById('sessionList');
+  if (!container) return;
+  const hist = getHistory();
+  if (!hist.length) { container.innerHTML = '<div class="session-empty"><p>暂无会话</p><p class="sub">开始讨论后自动保存</p></div>'; return; }
+  container.innerHTML = hist.map(h => `
+    <div class="session-item" data-id="${h.id}">
+      <span class="session-delete" title="删除">&times;</span>
+      <div class="session-title">${escapeHtml(h.topic.slice(0, 30))}</div>
+      <div class="session-time">${new Date(h.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${h.successCount}/8</div>
+    </div>
+  `).join('');
+  container.querySelectorAll('.session-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      if (e.target.classList.contains('session-delete')) {
+        const id = parseInt(this.dataset.id);
+        const hist = getHistory().filter(h => h.id !== id);
+        saveHistory(hist);
+        renderSessionList();
+        return;
+      }
+      showNotification('历史回看功能开发中', 'info');
+    });
+  });
+}
+
+// ===== Material Search =====
+function filterMaterials(query) {
+  if (!query) { renderMaterialGrid(document.querySelector('.material-tab.active')?.dataset.category || Object.keys(MATERIALS)[0]); return; }
+  const grid = document.getElementById('materialGrid');
+  if (!grid) return;
+  const q = query.toLowerCase();
+  let results = [];
+  Object.values(MATERIALS).forEach(cat => {
+    cat.items.forEach(item => {
+      if (item.title.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q) || item.tags.some(t => t.toLowerCase().includes(q))) results.push(item);
+    });
+  });
+  if (!results.length) { grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;">未找到匹配素材</p>'; return; }
+  grid.innerHTML = results.map(item => `<div class="material-card"><h4>${item.icon} ${item.title} <span class="mat-count">${item.count}</span></h4><p>${item.desc}</p><div class="mat-items">${item.tags.map(t => '<span class="mat-item">' + t + '</span>').join('')}</div></div>`).join('');
 }
 
 // ===== Theme =====
