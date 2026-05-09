@@ -102,16 +102,19 @@ function saveUserConfig(c) { localStorage.setItem(STORAGE_KEYS.MODEL_CONFIG, JSO
 
 // API Keys: 加密存储 (async)
 let _cachedKeys = null;
+function normalizeKeys(raw) {
+  return { friday: raw.friday || '', deepseek: raw.deepseek || '', openai_compatible: raw.openai_compatible || '', customUrl: raw.customUrl || '' };
+}
 async function getApiKeys() {
   if (_cachedKeys) return _cachedKeys;
   const s = localStorage.getItem(STORAGE_KEYS.API_KEYS);
   if (!s) return { friday: '', deepseek: '', openai_compatible: '', customUrl: '' };
   // 尝试解密（新格式）
   const decrypted = await CryptoStore.decrypt(s);
-  if (decrypted) { try { _cachedKeys = JSON.parse(decrypted); return _cachedKeys; } catch(e) {} }
+  if (decrypted) { try { _cachedKeys = normalizeKeys(JSON.parse(decrypted)); return _cachedKeys; } catch(e) {} }
   // 兼容旧明文格式：读取后自动迁移为加密
   try {
-    const old = JSON.parse(s);
+    const old = normalizeKeys(JSON.parse(s));
     _cachedKeys = old;
     await saveApiKeys(old); // 自动加密迁移
     return old;
