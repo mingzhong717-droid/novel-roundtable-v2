@@ -1,7 +1,47 @@
 // ===== NovelRoundTable v2 - Route B: Frontend Direct AI API =====
-// 纯前端调用，零服务器成本，API Key 仅存储在用户本地浏览器
+// 纯前端调用，零服务器成本，API Key 加密存储在用户本地浏览器
 ;(function() {
 'use strict';
+
+// ===== 工具函数 =====
+function debounce(fn, ms) { let t; return function(...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), ms); }; }
+
+// ===== 加密存储模块 (AES-GCM via Web Crypto API) =====
+const CryptoStore = {
+  _keyMaterial: null,
+  _getKey: async function() {
+    if (this._keyMaterial) return this._keyMaterial;
+    // 使用固定 passphrase 派生密钥（防止肉眼直读 + 扩展窃取明文）
+    // 注意：这不能防御有针对性的攻击者，但大幅提升安全基线
+    const enc = new TextEncoder();
+    const base = await crypto.subtle.importKey('raw', enc.encode('NRT-v2-' + location.origin), 'PBKDF2', false, ['deriveKey']);
+    this._keyMaterial = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: enc.encode('novel-roundtable-salt'), iterations: 100000, hash: 'SHA-256' },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+    );
+    return this._keyMaterial;
+  },
+  encrypt: async function(plaintext) {
+    const key = await this._getKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+    // 存储格式: base64(iv + ciphertext)
+    const buf = new Uint8Array(iv.length + ct.byteLength);
+    buf.set(iv); buf.set(new Uint8Array(ct), iv.length);
+    return btoa(String.fromCharCode(...buf));
+  },
+  decrypt: async function(encoded) {
+    try {
+      const key = await this._getKey();
+      const raw = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+      const iv = raw.slice(0, 12);
+      const ct = raw.slice(12);
+      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+      return new TextDecoder().decode(pt);
+    } catch { return null; }
+  }
+};
 
 // ===== API 平台配置 =====
 const API_PLATFORMS = {
@@ -51,7 +91,7 @@ const EXPERTS = [
 ];
 
 // ===== 数据持久化 =====
-const STORAGE_KEYS = { API_KEYS: 'roundtable_api_keys', MODEL_CONFIG: 'roundtable_model_config', HISTORY: 'roundtable_history' };
+const STORAGE_KEYS = { API_KEYS: 'roundtable_api_keys_v2', MODEL_CONFIG: 'roundtable_model_config', HISTORY: 'roundtable_history' };
 
 function getUserConfig() {
   const s = localStorage.getItem(STORAGE_KEYS.MODEL_CONFIG);
@@ -59,12 +99,31 @@ function getUserConfig() {
   return { mode: 'preset', selectedPreset: 'free', globalDefault: 'longcat-2.0-preview', experts: {}, basePreset: 'standard', overrides: {} };
 }
 function saveUserConfig(c) { localStorage.setItem(STORAGE_KEYS.MODEL_CONFIG, JSON.stringify(c)); }
-function getApiKeys() {
+
+// API Keys: 加密存储 (async)
+let _cachedKeys = null;
+async function getApiKeys() {
+  if (_cachedKeys) return _cachedKeys;
   const s = localStorage.getItem(STORAGE_KEYS.API_KEYS);
-  if (s) try { return JSON.parse(s); } catch(e) {}
+  if (!s) return { friday: '', deepseek: '', openai_compatible: '', customUrl: '' };
+  // 尝试解密（新格式）
+  const decrypted = await CryptoStore.decrypt(s);
+  if (decrypted) { try { _cachedKeys = JSON.parse(decrypted); return _cachedKeys; } catch(e) {} }
+  // 兼容旧明文格式：读取后自动迁移为加密
+  try {
+    const old = JSON.parse(s);
+    _cachedKeys = old;
+    await saveApiKeys(old); // 自动加密迁移
+    return old;
+  } catch(e) {}
   return { friday: '', deepseek: '', openai_compatible: '', customUrl: '' };
 }
-function saveApiKeys(k) { localStorage.setItem(STORAGE_KEYS.API_KEYS, JSON.stringify(k)); }
+async function saveApiKeys(k) {
+  _cachedKeys = k;
+  const encrypted = await CryptoStore.encrypt(JSON.stringify(k));
+  localStorage.setItem(STORAGE_KEYS.API_KEYS, encrypted);
+}
+
 function getHistory() {
   const s = localStorage.getItem(STORAGE_KEYS.HISTORY);
   if (s) try { return JSON.parse(s); } catch(e) {}
@@ -91,10 +150,21 @@ function estimateCost(cfg) {
 function formatCost(c) { return c === 0 ? '¥0' : c < 0.01 ? '< ¥0.01' : '≈¥' + c.toFixed(2); }
 
 // ===== 统一 AI 调用 =====
+const ERROR_MESSAGES = {
+  400: '请求参数错误，请检查模型名称是否正确',
+  401: 'API Key 无效或已过期，请到设置中重新配置',
+  403: '无权访问该模型，请确认 Key 权限或联系平台',
+  404: '模型不存在或 API 地址错误，请检查配置',
+  429: '请求过于频繁，请稍后重试（触发限流）',
+  500: '服务端内部错误，请稍后重试',
+  502: '网关错误，API 服务可能暂时不可用',
+  503: '服务暂时不可用，请稍后重试'
+};
+
 async function callAI(platform, apiKey, model, messages, opts = {}) {
   const pc = API_PLATFORMS[platform];
   if (!pc) throw new Error('未知平台: ' + platform);
-  const keys = getApiKeys();
+  const keys = await getApiKeys();
   const url = platform === 'openai_compatible' ? keys.customUrl : pc.url;
   if (!url) throw new Error('请配置 API 地址');
   if (!apiKey) throw new Error('请配置 ' + pc.name + ' 的 API Key');
@@ -104,15 +174,20 @@ async function callAI(platform, apiKey, model, messages, opts = {}) {
     headers: { 'Content-Type': 'application/json', 'Authorization': auth },
     body: JSON.stringify({ model, messages, max_tokens: opts.max_tokens || 2000, temperature: opts.temperature || 0.8 })
   });
-  if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200)); }
+  if (!res.ok) {
+    const friendly = ERROR_MESSAGES[res.status];
+    if (friendly) throw new Error(friendly);
+    const t = await res.text().catch(() => '');
+    throw new Error('请求失败 (HTTP ' + res.status + ')：' + (t.slice(0, 100) || '未知错误'));
+  }
   const d = await res.json();
-  if (!d.choices || !d.choices[0]) throw new Error('API 返回格式异常');
+  if (!d.choices || !d.choices[0]) throw new Error('API 返回格式异常，请检查模型是否支持 chat 接口');
   return d.choices[0].message.content;
 }
 
 // ===== 测试连接 =====
 async function testConnection(platform) {
-  const keys = getApiKeys();
+  const keys = await getApiKeys();
   const apiKey = keys[platform];
   if (!apiKey) throw new Error('未填写 API Key');
   const model = platform === 'deepseek' ? 'deepseek-v4-flash-official' : 'longcat-2.0-preview';
@@ -120,14 +195,18 @@ async function testConnection(platform) {
 }
 
 // ===== 8 专家并行讨论 =====
-let isRoundtableRunning = false;
-let currentResults = null;
+// ===== 统一状态管理 =====
+const store = {
+  isRoundtableRunning: false,
+  currentResults: null,
+  chatMessages: []
+};
 
 async function runRoundtable(topic, onProgress) {
-  if (isRoundtableRunning) return;
-  isRoundtableRunning = true;
+  if (store.isRoundtableRunning) return;
+  store.isRoundtableRunning = true;
   const cfg = getUserConfig();
-  const keys = getApiKeys();
+  const keys = await getApiKeys();
   const startTime = Date.now();
 
   const promises = EXPERTS.map(async (expert) => {
@@ -160,16 +239,18 @@ async function runRoundtable(topic, onProgress) {
   const entry = { id: Date.now(), topic: topic.slice(0, 200), timestamp: new Date().toISOString(), totalTime, preset: cfg.mode === 'preset' ? cfg.selectedPreset : cfg.mode, successCount: results.filter(r => r.success).length };
   const hist = getHistory(); hist.unshift(entry); saveHistory(hist);
 
-  currentResults = { topic, totalTime, results, cost: formatCost(estimateCost(cfg)) };
-  isRoundtableRunning = false;
-  return currentResults;
+  store.currentResults = { topic, totalTime, results, cost: formatCost(estimateCost(cfg)) };
+  store.isRoundtableRunning = false;
+  return store.currentResults;
 }
 
-// ===== Simple Markdown Renderer =====
+// ===== Safe Markdown Renderer (XSS-safe) =====
 function renderMarkdown(text) {
   if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // 1. 先转义所有 HTML 实体
+  let safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  // 2. 在已转义的安全文本上做 markdown 转换
+  safe = safe
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
@@ -179,10 +260,12 @@ function renderMarkdown(text) {
     .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
     .replace(/\n/g, '<br>');
+  // 3. 最终消毒：移除任何可能的事件处理器属性（防御深度）
+  safe = safe.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+  return safe;
 }
 
-// ===== UI State =====
-let chatMessages = [];
+// ===== UI State (使用 store.chatMessages) =====
 
 // ===== DOM Ready =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -334,7 +417,7 @@ function bindSettingsEvents() {
       const statusEl = { friday: 'connFriday', deepseek: 'connDeepseek', openai_compatible: 'connOpenai' }[platform];
       const el = document.getElementById(statusEl);
       // Save keys first
-      saveCurrentKeys();
+      await saveCurrentKeys();
       el.textContent = '⏳ 测试中...';
       el.className = 'conn-status testing';
       try {
@@ -353,8 +436,8 @@ function bindSettingsEvents() {
   });
 }
 
-function saveCurrentKeys() {
-  saveApiKeys({
+async function saveCurrentKeys() {
+  await saveApiKeys({
     friday: document.getElementById('keyFriday')?.value.trim() || '',
     deepseek: document.getElementById('keyDeepseek')?.value.trim() || '',
     openai_compatible: document.getElementById('keyOpenai')?.value.trim() || '',
@@ -383,11 +466,11 @@ function readCurrentConfig() {
   return cfg;
 }
 
-function handleSaveSettings() {
-  saveCurrentKeys();
+async function handleSaveSettings() {
+  await saveCurrentKeys();
   const cfg = readCurrentConfig();
   saveUserConfig(cfg);
-  const keys = getApiKeys();
+  const keys = await getApiKeys();
   if (!keys.friday && !keys.deepseek && !keys.openai_compatible) {
     showNotification('请至少配置一个平台的 API Key', 'warning');
     return;
@@ -402,11 +485,11 @@ function closeChatPanel() { document.getElementById('chatPanel').classList.remov
 
 function renderChatMessages() {
   const container = document.getElementById('chatMessages');
-  if (!chatMessages.length) {
+  if (!store.chatMessages.length) {
     container.innerHTML = '<div class="chat-guidance"><div class="cg-icon">💬</div><h4>圆桌讨论尚未开始</h4><p>在输入框描述你的小说方案，8位专家将并行给出专业评估。</p></div>';
     return;
   }
-  container.innerHTML = chatMessages.map(msg => {
+  container.innerHTML = store.chatMessages.map(msg => {
     if (msg.type === 'system') return `<div class="chat-msg system"><div class="msg-icon">⚡</div><div class="msg-body">${msg.text}</div></div>`;
     if (msg.type === 'user') return `<div class="chat-msg user"><div class="msg-icon">👤</div><div class="msg-body"><div class="msg-name">你的小说方案</div><div class="msg-text">${escapeHtml(msg.text)}</div></div></div>`;
     if (msg.type === 'progress') return renderProgressPanel(msg);
@@ -454,8 +537,8 @@ function renderResultCards(msg) {
 function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
 
 async function startRoundtable(topic) {
-  if (isRoundtableRunning) { showNotification('讨论正在进行中...', 'warning'); return; }
-  const keys = getApiKeys();
+  if (store.isRoundtableRunning) { showNotification('讨论正在进行中...', 'warning'); return; }
+  const keys = await getApiKeys();
   if (!keys.friday && !keys.deepseek && !keys.openai_compatible) {
     showNotification('请先配置 API Key', 'warning');
     openSettingsModal();
@@ -463,9 +546,9 @@ async function startRoundtable(topic) {
   }
 
   openChatPanel();
-  chatMessages = [];
-  chatMessages.push({ type: 'user', text: topic });
-  chatMessages.push({ type: 'system', text: '⏳ 正在召集 8 位专家，并行请求中...' });
+  store.chatMessages = [];
+  store.chatMessages.push({ type: 'user', text: topic });
+  store.chatMessages.push({ type: 'system', text: '⏳ 正在召集 8 位专家，并行请求中...' });
 
   // Create progress message
   const cfg = getUserConfig();
@@ -473,7 +556,7 @@ async function startRoundtable(topic) {
     type: 'progress',
     experts: EXPERTS.map(e => ({ id: e.id, emoji: e.emoji, name: e.name, modelId: getModelForExpert(e.id, cfg), status: 'pending', elapsed: null }))
   };
-  chatMessages.push(progressMsg);
+  store.chatMessages.push(progressMsg);
   renderChatMessages();
 
   const result = await runRoundtable(topic, function(update) {
@@ -486,8 +569,8 @@ async function startRoundtable(topic) {
   });
 
   // Replace progress with results
-  chatMessages = chatMessages.filter(m => m.type !== 'progress' && !(m.type === 'system' && m.text.includes('⏳')));
-  chatMessages.push({ type: 'results', results: result.results, totalTime: result.totalTime, cost: result.cost });
+  store.chatMessages = store.chatMessages.filter(m => m.type !== 'progress' && !(m.type === 'system' && m.text.includes('⏳')));
+  store.chatMessages.push({ type: 'results', results: result.results, totalTime: result.totalTime, cost: result.cost });
   renderChatMessages();
 
   const sc = result.results.filter(r => r.success).length;
@@ -584,14 +667,16 @@ function renderMaterialGrid(cat) {
   `).join('');
 }
 
-// ===== Particle Background =====
+// ===== Particle Background (IntersectionObserver 控制，不可见时暂停) =====
 function initParticles() {
   const canvas = document.getElementById('particlesCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   let particles = [];
+  let rafId = null;
+  let isVisible = true;
   function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-  resize(); window.addEventListener('resize', resize);
+  resize(); window.addEventListener('resize', debounce(resize, 200));
   class Particle {
     constructor() { this.reset(); }
     reset() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.size = Math.random() * 2 + 0.5; this.speedX = (Math.random() - 0.5) * 0.5; this.speedY = (Math.random() - 0.5) * 0.5; this.opacity = Math.random() * 0.5 + 0.1; }
@@ -600,14 +685,21 @@ function initParticles() {
   }
   for (let i = 0; i < 50; i++) particles.push(new Particle());
   function animate() {
+    if (!isVisible) { rafId = null; return; }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(p => { p.update(); p.draw(); });
     for (let i = 0; i < particles.length; i++) for (let j = i + 1; j < particles.length; j++) {
       const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y, dist = Math.sqrt(dx*dx + dy*dy);
       if (dist < 120) { ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y); ctx.strokeStyle = 'rgba(108, 92, 231, ' + (0.08 * (1 - dist/120)) + ')'; ctx.stroke(); }
     }
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
   }
+  // 只在 canvas 可见时运行动画
+  const obs = new IntersectionObserver(([entry]) => {
+    isVisible = entry.isIntersecting;
+    if (isVisible && !rafId) animate();
+  }, { threshold: 0.01 });
+  obs.observe(canvas);
   animate();
 }
 
@@ -640,7 +732,7 @@ function initEventListeners() {
 
 
   // Expert info
-  document.getElementById('btnExpertInfo')?.addEventListener('click', showExpertInfoModal);
+  document.getElementById('btnExpertInfo')?.addEventListener('click', openExpertInfoModal);
 
   // Modal
   document.getElementById('modalClose')?.addEventListener('click', closeModal);
@@ -650,8 +742,8 @@ function initEventListeners() {
   // Mobile menu
   document.getElementById('mobileMenuBtn')?.addEventListener('click', function() { this.classList.toggle('active'); document.getElementById('sidebar')?.classList.toggle('open'); });
 
-  // Material search
-  document.getElementById('materialSearch')?.addEventListener('input', function() { filterMaterials(this.value.trim()); });
+  // Material search (debounced)
+  document.getElementById('materialSearch')?.addEventListener('input', debounce(function(e) { filterMaterials(e.target.value.trim()); }, 200));
 
   // Theme
   document.getElementById('btnTheme')?.addEventListener('click', toggleTheme);
@@ -682,7 +774,7 @@ function initEventListeners() {
   });
 
   // New session
-  document.getElementById('btnNewSession')?.addEventListener('click', () => { chatMessages = []; renderChatMessages(); openChatPanel(); showNotification('新圆桌会已创建'); });
+  document.getElementById('btnNewSession')?.addEventListener('click', () => { store.chatMessages = []; renderChatMessages(); openChatPanel(); showNotification('新圆桌会已创建'); });
 
   // Escape
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeModal(); closeSettingsModal(); closeChatPanel(); } });
@@ -690,7 +782,7 @@ function initEventListeners() {
   // Retry buttons (delegated)
   document.addEventListener('click', function(e) {
     const retryBtn = e.target.closest('.btn-retry');
-    if (retryBtn && currentResults) {
+    if (retryBtn && store.currentResults) {
       showNotification('重试功能开发中', 'warning');
     }
   });
@@ -712,7 +804,7 @@ function sendChat() {
 }
 
 // ===== Expert Info Modal =====
-function showExpertInfoModal() {
+function openExpertInfoModal() {
   const modal = document.getElementById('modalOverlay');
   const header = document.getElementById('modalHeader');
   const body = document.getElementById('modalBody');
