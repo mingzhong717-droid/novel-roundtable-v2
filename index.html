@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NovelRoundTable - AI 小说创作协作平台</title>
-  <link rel="stylesheet" href="css/style.css?v=2.2.0">
+  <link rel="stylesheet" href="css/style.css?v=2.3.0">
 </head>
 <body>
   <canvas id="particlesCanvas"></canvas>
@@ -121,7 +121,7 @@
             <span class="footer-sep">·</span>
             <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2/issues" target="_blank">反馈建议</a>
             <span class="footer-sep">·</span>
-            <span class="footer-version">v2.2.0</span>
+            <span class="footer-version">v2.3.0</span>
           </div>
         </div>
       </footer>
@@ -165,15 +165,45 @@
       <button class="chat-close" id="chatClose">&times;</button>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
-    <div class="chat-input-area">
-      <textarea id="chatInput" placeholder="输入你的想法或问题..."></textarea>
-      <button class="btn-chat-send" id="btnChatSend">发送</button>
+    <div class="chat-followup-zone" id="chatFollowupZone">
+      <!-- 我的模板 -->
+      <div class="followup-my-templates" id="myTemplatesRow"></div>
+      <!-- 第一层：快捷追问按钮 -->
+      <div class="followup-quick-btns">
+        <button class="fq-btn" data-prompt="这个设定有逻辑漏洞吗？请逐条分析可能的矛盾点。">🔍 这个设定有逻辑漏洞吗</button>
+        <button class="fq-btn" data-prompt="帮我想3个出人意料但合情合理的剧情反转方案，每个方案简述核心冲突和读者情绪曲线。">💥 帮我想3个剧情反转</button>
+        <button class="fq-btn" data-prompt="主角的核心动机够不够有力？行为逻辑链是否自洽？请给出改进建议。">👤 主角动机够不够有力</button>
+        <button class="fq-btn" data-prompt="当前节奏是不是太慢了？哪些段落可以压缩或删除？请给出具体的节奏优化方案。">🐢 节奏是不是太慢了</button>
+      </div>
+      <!-- 第二层：@指定专家 -->
+      <div class="followup-expert-select">
+        <span class="fes-label">@</span>
+        <div class="fes-tags" id="expertSelectTags"></div>
+      </div>
+      <!-- 第三层：交付物模式切换 -->
+      <div class="followup-mode-tabs">
+        <button class="fmt-tab active" data-mode="free">自由追问</button>
+        <button class="fmt-tab" data-mode="deliverable">要一个交付物</button>
+      </div>
+      <!-- 交付物按钮（仅在交付物模式下显示） -->
+      <div class="followup-deliverables hidden" id="deliverablesBtns">
+        <button class="fd-btn" data-prompt="请给我一份800字左右的人物小传，包含：背景、性格、动机、成长弧光，用结构化格式输出。">📋 给我一份人物小传</button>
+        <button class="fd-btn" data-prompt="请给我第一章开头示范（500字左右），要求：开篇即冲突，语言风格贴合题材，有悬念钩子。">📖 给我第一章开头示范（500字）</button>
+        <button class="fd-btn" data-prompt="请给我一份人物关系图，用结构化文本表示：列出所有主要角色、关系类型（敌对/同盟/暧昧/师徒等）、关系张力点。">🗺️ 给我人物关系图</button>
+        <button class="fd-btn" data-prompt="请给我三幕大纲骨架，包含：第一幕（建置）、第二幕（对抗）、第三幕（解决），每幕列出核心事件、转折点、情绪走向。">📐 给我三幕大纲骨架</button>
+      </div>
+      <!-- 输入区 -->
+      <div class="followup-input-row">
+        <textarea id="chatInput" placeholder="输入你的追问或需求..." rows="2"></textarea>
+        <button class="btn-save-template" id="btnSaveTemplate" title="保存为常用模板">⭐</button>
+        <button class="btn-chat-send" id="btnChatSend">发送</button>
+      </div>
     </div>
   </div>
 
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
-  <script src="js/main.js?v=2.2.0"></script>
+  <script src="js/main.js?v=2.3.0"></script>
 </body>
 </html>

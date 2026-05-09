@@ -726,18 +726,203 @@ body {
 .chat-message .msg-name { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
 .chat-message .msg-text { font-size: 14px; color: var(--text-secondary); line-height: 1.7; background: rgba(15, 15, 35, 0.5); padding: 12px 16px; border-radius: 12px; border-top-left-radius: 4px; }
 .chat-message.user .msg-text { background: rgba(108, 92, 231, 0.15); border-top-left-radius: 12px; border-top-right-radius: 4px; }
-.chat-input-area { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-end; }
-.chat-input-area textarea {
-  flex: 1; padding: 12px 16px; min-height: 44px; max-height: 120px;
-  background: rgba(15, 15, 35, 0.6); border: 1px solid var(--border);
-  border-radius: var(--radius); color: var(--text-primary);
-  font-size: 14px; resize: none; font-family: inherit;
+/* ===== Follow-up Zone ===== */
+.chat-followup-zone {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
 }
-.chat-input-area textarea:focus { outline: none; border-color: var(--primary); }
+/* 我的模板 */
+.followup-my-templates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.followup-my-templates.hidden { display: none; }
+.followup-my-templates .mt-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.followup-my-templates .mt-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: rgba(253, 203, 110, 0.08);
+  border: 1px solid rgba(253, 203, 110, 0.25);
+  border-radius: 12px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.followup-my-templates .mt-item:hover {
+  background: rgba(253, 203, 110, 0.15);
+  border-color: rgba(253, 203, 110, 0.5);
+}
+.followup-my-templates .mt-del {
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+.followup-my-templates .mt-del:hover { color: #e17055; }
+
+/* 快捷追问按钮 */
+.followup-quick-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fq-btn {
+  padding: 5px 10px;
+  background: rgba(108, 92, 231, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.fq-btn:hover {
+  background: rgba(108, 92, 231, 0.15);
+  border-color: var(--primary);
+  color: var(--primary-light);
+}
+
+/* @专家选择 */
+.followup-expert-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fes-label {
+  font-size: var(--text-sm);
+  color: var(--primary-light);
+  font-weight: 700;
+}
+.fes-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.fes-tag {
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: rgba(108, 92, 231, 0.04);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.fes-tag:hover {
+  background: rgba(108, 92, 231, 0.1);
+  border-color: var(--border);
+}
+.fes-tag.active {
+  background: rgba(108, 92, 231, 0.18);
+  border-color: var(--primary);
+  color: var(--primary-light);
+  font-weight: 600;
+}
+
+/* 模式切换 tab */
+.followup-mode-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  width: fit-content;
+}
+.fmt-tab {
+  padding: 5px 14px;
+  background: transparent;
+  border: none;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.fmt-tab:not(:last-child) { border-right: 1px solid var(--border); }
+.fmt-tab:hover { background: rgba(108, 92, 231, 0.06); }
+.fmt-tab.active {
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--primary-light);
+  font-weight: 600;
+}
+
+/* 交付物按钮 */
+.followup-deliverables {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.followup-deliverables.hidden { display: none; }
+.fd-btn {
+  padding: 5px 10px;
+  background: rgba(0, 206, 201, 0.06);
+  border: 1px solid rgba(0, 206, 201, 0.2);
+  border-radius: 14px;
+  font-size: var(--text-xs);
+  color: var(--accent);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.fd-btn:hover {
+  background: rgba(0, 206, 201, 0.15);
+  border-color: var(--accent);
+}
+
+/* 输入行 */
+.followup-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.followup-input-row textarea {
+  flex: 1;
+  padding: 10px 14px;
+  min-height: 40px;
+  max-height: 100px;
+  background: rgba(15, 15, 35, 0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 13px;
+  resize: none;
+  font-family: inherit;
+}
+.followup-input-row textarea:focus { outline: none; border-color: var(--primary); }
+.btn-save-template {
+  padding: 8px 12px;
+  background: rgba(253, 203, 110, 0.08);
+  border: 1px solid rgba(253, 203, 110, 0.25);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  line-height: 1;
+}
+.btn-save-template:hover {
+  background: rgba(253, 203, 110, 0.2);
+  border-color: rgba(253, 203, 110, 0.5);
+}
 .btn-chat-send {
-  padding: 12px 20px; background: var(--gradient-1);
+  padding: 10px 18px; background: var(--gradient-1);
   border: none; border-radius: var(--radius);
-  color: white; font-size: 14px; font-weight: 600;
+  color: white; font-size: 13px; font-weight: 600;
   cursor: pointer; transition: var(--transition); white-space: nowrap;
 }
 .btn-chat-send:hover { box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4); }

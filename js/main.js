@@ -126,8 +126,14 @@ const QUICK_TEMPLATES = [
   }
 ];
 
+// ===== 追问区状态 =====
+const followUpState = {
+  selectedExpert: 'all', // 'all' 或某个 expert id
+  mode: 'free' // 'free' 或 'deliverable'
+};
+
 // ===== 数据持久化 =====
-const STORAGE_KEYS = { API_KEYS: 'roundtable_api_keys_v2', MODEL_CONFIG: 'roundtable_model_config', HISTORY: 'roundtable_history' };
+const STORAGE_KEYS = { API_KEYS: 'roundtable_api_keys_v2', MODEL_CONFIG: 'roundtable_model_config', HISTORY: 'roundtable_history', USER_TEMPLATES: 'roundtable_user_templates' };
 
 function getUserConfig() {
   const s = localStorage.getItem(STORAGE_KEYS.MODEL_CONFIG);
@@ -333,6 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initExperts();
   initMaterials();
   initQuickTemplates();
+  initFollowupZone();
   initScrollReveal();
   initEventListeners();
   initSidebar();
@@ -753,6 +760,107 @@ function initQuickTemplates() {
   });
 }
 
+// ===== Follow-up Zone Initialization =====
+function getUserTemplates() {
+  const s = localStorage.getItem(STORAGE_KEYS.USER_TEMPLATES);
+  if (s) try { return JSON.parse(s); } catch(e) {}
+  return [];
+}
+function saveUserTemplates(arr) { localStorage.setItem(STORAGE_KEYS.USER_TEMPLATES, JSON.stringify(arr.slice(0, 5))); }
+
+function renderMyTemplates() {
+  const container = document.getElementById('myTemplatesRow');
+  if (!container) return;
+  const templates = getUserTemplates();
+  if (!templates.length) { container.innerHTML = ''; container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+  container.innerHTML = '<span class="mt-label">我的模板：</span>' + templates.map((t, i) => `<span class="mt-item" data-idx="${i}"><span class="mt-text">${escapeHtml(t.slice(0, 20))}</span><span class="mt-del" data-idx="${i}">&times;</span></span>`).join('');
+}
+
+function initFollowupZone() {
+  const zone = document.getElementById('chatFollowupZone');
+  if (!zone) return;
+
+  // 渲染专家选择标签
+  const tagsContainer = document.getElementById('expertSelectTags');
+  if (tagsContainer) {
+    const allTag = '<span class="fes-tag active" data-expert="all">全部专家</span>';
+    const expertTags = EXPERTS.map(e => '<span class="fes-tag" data-expert="' + e.id + '">' + e.emoji + ' ' + e.name + '</span>').join('');
+    tagsContainer.innerHTML = allTag + expertTags;
+    tagsContainer.addEventListener('click', function(e) {
+      const tag = e.target.closest('.fes-tag');
+      if (!tag) return;
+      tagsContainer.querySelectorAll('.fes-tag').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active');
+      followUpState.selectedExpert = tag.dataset.expert;
+    });
+  }
+
+  // 快捷追问按钮
+  zone.querySelector('.followup-quick-btns')?.addEventListener('click', function(e) {
+    const btn = e.target.closest('.fq-btn');
+    if (!btn) return;
+    const input = document.getElementById('chatInput');
+    if (input) { input.value = btn.dataset.prompt; input.focus(); }
+  });
+
+  // 模式切换 tab
+  zone.querySelectorAll('.fmt-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      zone.querySelectorAll('.fmt-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      followUpState.mode = this.dataset.mode;
+      const delPanel = document.getElementById('deliverablesBtns');
+      if (delPanel) delPanel.classList.toggle('hidden', followUpState.mode !== 'deliverable');
+    });
+  });
+
+  // 交付物按钮
+  document.getElementById('deliverablesBtns')?.addEventListener('click', function(e) {
+    const btn = e.target.closest('.fd-btn');
+    if (!btn) return;
+    const input = document.getElementById('chatInput');
+    if (input) { input.value = btn.dataset.prompt; input.focus(); }
+  });
+
+  // 保存模板按钮
+  document.getElementById('btnSaveTemplate')?.addEventListener('click', function() {
+    const input = document.getElementById('chatInput');
+    const text = input?.value.trim();
+    if (!text) { showNotification('输入框为空，无法保存', 'warning'); return; }
+    const templates = getUserTemplates();
+    if (templates.includes(text)) { showNotification('该模板已存在', 'warning'); return; }
+    if (templates.length >= 5) templates.pop();
+    templates.unshift(text);
+    saveUserTemplates(templates);
+    renderMyTemplates();
+    showNotification('已保存为常用模板 ⭐', 'success');
+  });
+
+  // 我的模板：点击填充 / 删除
+  document.getElementById('myTemplatesRow')?.addEventListener('click', function(e) {
+    const del = e.target.closest('.mt-del');
+    if (del) {
+      const idx = parseInt(del.dataset.idx);
+      const templates = getUserTemplates();
+      templates.splice(idx, 1);
+      saveUserTemplates(templates);
+      renderMyTemplates();
+      return;
+    }
+    const item = e.target.closest('.mt-item');
+    if (item) {
+      const idx = parseInt(item.dataset.idx);
+      const templates = getUserTemplates();
+      const input = document.getElementById('chatInput');
+      if (input && templates[idx]) { input.value = templates[idx]; input.focus(); }
+    }
+  });
+
+  // 渲染已保存模板
+  renderMyTemplates();
+}
+
 // ===== Particle Background (IntersectionObserver 控制，不可见时暂停) =====
 function initParticles() {
   const canvas = document.getElementById('particlesCanvas');
@@ -889,7 +997,11 @@ async function sendChat() {
   input.value = '';
   // 如果有活跃会话，执行追问
   if (store.currentResults && store.currentResults.historyId) {
-    await followUpRoundtable(text);
+    if (followUpState.selectedExpert !== 'all') {
+      await followUpSingleExpert(text, followUpState.selectedExpert);
+    } else {
+      await followUpRoundtable(text);
+    }
   } else {
     startRoundtable(text);
   }
@@ -958,6 +1070,84 @@ async function followUpRoundtable(question) {
   const cost = formatCost(estimateCost(cfg));
   store.chatMessages.push({ type: 'results', results, totalTime, cost });
   store.currentResults = { ...store.currentResults, results, totalTime, cost };
+  store.isRoundtableRunning = false;
+  renderChatMessages();
+  renderSessionList();
+}
+
+// ===== 单专家追问 =====
+async function followUpSingleExpert(question, expertId) {
+  if (store.isRoundtableRunning) { showNotification('讨论正在进行中...', 'warning'); return; }
+  const expert = EXPERTS.find(e => e.id === expertId);
+  if (!expert) { showNotification('未找到该专家', 'warning'); return; }
+
+  store.isRoundtableRunning = true;
+  store.chatMessages.push({ type: 'user', text: question });
+  store.chatMessages.push({ type: 'system', text: '⏳ ' + expert.emoji + ' ' + expert.name + ' 正在回应...' });
+  renderChatMessages();
+
+  const cfg = getUserConfig();
+  const keys = await getApiKeys();
+  const modelId = getModelForExpert(expert.id, cfg);
+  const modelInfo = AVAILABLE_MODELS[modelId];
+
+  if (!modelInfo) {
+    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+    store.chatMessages.push({ type: 'results', results: [{ expert, modelId, success: false, error: '模型不存在' }], totalTime: '0', cost: '¥0' });
+    store.isRoundtableRunning = false;
+    renderChatMessages();
+    return;
+  }
+
+  const apiKey = keys[modelInfo.platform];
+  if (!apiKey) {
+    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+    store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: '未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key' }], totalTime: '0', cost: '¥0' });
+    store.isRoundtableRunning = false;
+    renderChatMessages();
+    return;
+  }
+
+  // 构建多轮消息历史
+  const histId = store.currentResults.historyId;
+  const hist = getHistory();
+  const entry = hist.find(h => h.id === histId);
+  const prevRounds = entry ? (entry.rounds || []) : [];
+  prevRounds.push({ role: 'user', content: question });
+
+  const messages = [{ role: 'system', content: expert.systemPrompt }];
+  prevRounds.forEach(r => {
+    if (r.role === 'user') messages.push({ role: 'user', content: r.content });
+    if (r.role === 'assistant' && r.expertId === expert.id) messages.push({ role: 'assistant', content: r.content });
+  });
+
+  const t0 = Date.now();
+  try {
+    const content = await callAI(modelInfo.platform, apiKey, modelId, messages, { temperature: expert.temperature, max_tokens: 2000 });
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    const result = { expert, modelId, modelInfo, content, elapsed, success: true };
+
+    // 更新历史
+    prevRounds.push({ role: 'assistant', expertId: expert.id, content });
+    const newResult = { expertName: expert.name, expertId: expert.id, emoji: expert.emoji, content, model: modelInfo.name, duration: elapsed };
+    if (entry) {
+      entry.rounds = prevRounds;
+      entry.results = [...(entry.results || []), newResult];
+      entry.successCount = (entry.successCount || 0) + 1;
+      updateHistoryEntry(histId, { rounds: entry.rounds, results: entry.results, successCount: entry.successCount });
+    }
+
+    // 更新 UI
+    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+    store.chatMessages.push({ type: 'results', results: [result], totalTime: elapsed, cost: formatCost(estimateCost(cfg) / 8) });
+    store.currentResults = { ...store.currentResults, results: [result], totalTime: elapsed };
+    showNotification(expert.emoji + ' ' + expert.name + ' 回复完成', 'success');
+  } catch (err) {
+    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+    store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: err.message }], totalTime: '0', cost: '¥0' });
+    showNotification(expert.emoji + ' ' + expert.name + ' 请求失败', 'warning');
+  }
+
   store.isRoundtableRunning = false;
   renderChatMessages();
   renderSessionList();
