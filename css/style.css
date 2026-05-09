@@ -419,9 +419,10 @@ body {
 .modal-footer { padding: 20px 32px 32px; display: flex; gap: 12px; }
 
 /* ===== Settings Modal ===== */
-.settings-modal { max-width: 420px; }
+.settings-modal { max-width: 480px; }
 .settings-form { display: flex; flex-direction: column; gap: 14px; }
-.settings-form label { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.settings-form label { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-top: 4px; }
+.settings-form label:first-child { margin-top: 0; }
 .settings-form select,
 .settings-form input {
   width: 100%; padding: 12px 16px;
@@ -431,9 +432,47 @@ body {
 }
 .settings-form select:focus,
 .settings-form input:focus { border-color: var(--primary); }
-.settings-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.settings-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.6; }
+.settings-hint-box { margin-top: 8px; padding: 12px 16px; background: rgba(108, 92, 231, 0.05); border-radius: 8px; border: 1px solid var(--border); }
+.settings-hint-box .settings-hint { margin-top: 6px; }
+.settings-hint-box .settings-hint:first-child { margin-top: 0; }
 .btn-settings { background: rgba(108, 92, 231, 0.15); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: var(--transition); }
 .btn-settings:hover { background: var(--primary); color: #fff; }
+
+/* ===== Expert Progress Panel (Real-time) ===== */
+.expert-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  background: rgba(15, 15, 35, 0.5);
+  border-radius: 12px;
+}
+.expert-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(108, 92, 231, 0.05);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+.expert-progress-item.done {
+  background: rgba(0, 206, 201, 0.1);
+  border-color: rgba(0, 206, 201, 0.3);
+}
+.expert-progress-item.error {
+  background: rgba(253, 121, 168, 0.1);
+  border-color: rgba(253, 121, 168, 0.3);
+}
+.expert-progress-item .ep-emoji { font-size: 16px; }
+.expert-progress-item .ep-name { flex: 1; color: var(--text-secondary); }
+.expert-progress-item .ep-status { font-size: 14px; }
+.expert-progress-item.pending .ep-status { animation: pulse-dot 1.5s ease-in-out infinite; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 /* ===== Chat Panel ===== */
 .chat-panel {

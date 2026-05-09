@@ -201,23 +201,46 @@
   <div class="modal-overlay" id="settingsOverlay">
     <div class="modal settings-modal" id="settingsModal">
       <button class="modal-close" id="settingsClose">&times;</button>
-      <div class="modal-header"><h2>&#9881; API &#35774;&#32622;</h2></div>
+      <div class="modal-header"><h2>⚙ API 设置</h2></div>
       <div class="modal-body">
         <div class="settings-form">
-          <label for="platformSelect">AI &#24179;&#21488;</label>
+          <label for="platformSelect">AI 平台</label>
           <select id="platformSelect">
+            <option value="friday">Friday (美团内部)</option>
             <option value="deepseek">DeepSeek</option>
-            <option value="qwen">&#36890;&#20041;&#21315;&#38382;</option>
-            <option value="openai">OpenAI</option>
+            <option value="qwen">通义千问</option>
+            <option value="openai_compatible">OpenAI 兼容</option>
           </select>
+
+          <div id="customUrlGroup" style="display:none;">
+            <label for="customUrlInput">API 地址</label>
+            <input type="text" id="customUrlInput" placeholder="https://your-api-endpoint/v1/chat/completions" />
+          </div>
+
           <label for="apiKeyInput">API Key</label>
-          <input type="password" id="apiKeyInput" placeholder="&#35831;&#36755;&#20837;&#20320;&#30340; API Key" />
-          <p class="settings-hint">&#20320;&#30340; Key &#20165;&#23384;&#20648;&#22312;&#26412;&#22320;&#27983;&#35272;&#22120;&#65292;&#19981;&#20250;&#19978;&#20256;&#21040;&#20219;&#20309;&#26381;&#21153;&#22120;&#12290;</p>
+          <input type="password" id="apiKeyInput" placeholder="请输入你的 API Key" />
+
+          <label for="modelSelect">模型</label>
+          <select id="modelSelect">
+            <option value="deepseek-chat">deepseek-chat</option>
+          </select>
+
+          <label for="configModeSelect">配置模式</label>
+          <select id="configModeSelect">
+            <option value="default">默认搭配 - 所有专家用同一平台</option>
+            <option value="free">自由搭配 - 每位专家独立配置</option>
+            <option value="mixed">混合搭配 - 前4位/后4位分组</option>
+          </select>
+
+          <div class="settings-hint-box">
+            <p class="settings-hint">🔒 你的 Key 仅存储在本地浏览器 localStorage，不会上传到任何服务器。</p>
+            <p class="settings-hint">💡 Friday 平台使用 appid 认证，其他平台使用 Bearer Token。</p>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-entry primary" id="btnSaveSettings">&#20445;&#23384;&#35774;&#32622;</button>
-        <button class="btn-entry secondary" id="btnCancelSettings">&#21462;&#28040;</button>
+        <button class="btn-entry primary" id="btnSaveSettings">保存设置</button>
+        <button class="btn-entry secondary" id="btnCancelSettings">取消</button>
       </div>
     </div>
   </div>

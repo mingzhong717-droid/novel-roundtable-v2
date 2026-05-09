@@ -1,35 +1,131 @@
-// ===== NovelRoundTable - Frontend AI Roundtable Discussion =====
+// ===== NovelRoundTable - Route B: Frontend Direct AI API =====
+// 纯前端调用，零服务器成本，API Key 仅存储在用户本地浏览器
 
-// ===== AI Platform Configuration =====
-const PLATFORM_CONFIG = {
+// ===== API 平台配置 =====
+const API_PLATFORMS = {
+  friday: {
+    name: 'Friday (美团内部)',
+    url: 'https://aigc.sankuai.com/v1/openai/native/chat/completions',
+    defaultModel: 'friday-gpt4o',
+    authType: 'appid', // Authorization: appid <key>
+    models: ['friday-gpt4o', 'friday-gpt4o-mini', 'friday-claude-sonnet']
+  },
   deepseek: {
+    name: 'DeepSeek',
     url: 'https://api.deepseek.com/v1/chat/completions',
-    model: 'deepseek-chat',
-    name: 'DeepSeek'
+    defaultModel: 'deepseek-chat',
+    authType: 'bearer',
+    models: ['deepseek-chat', 'deepseek-reasoner']
   },
   qwen: {
+    name: '通义千问',
     url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-    model: 'qwen-plus',
-    name: '通义千问'
+    defaultModel: 'qwen-plus',
+    authType: 'bearer',
+    models: ['qwen-plus', 'qwen-turbo', 'qwen-max']
   },
-  openai: {
-    url: 'https://api.openai.com/v1/chat/completions',
-    model: 'gpt-4o-mini',
-    name: 'OpenAI'
+  openai_compatible: {
+    name: 'OpenAI 兼容',
+    url: '', // 用户自定义
+    defaultModel: 'gpt-4o-mini',
+    authType: 'bearer',
+    models: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo']
   }
 };
 
-// ===== 8 AI Experts with System Prompts =====
+// ===== 8 位 AI 专家 =====
 const AI_EXPERTS = [
-  { role: '故事架构师', emoji: '🏗️', systemPrompt: '你是一位资深故事架构师。擅长从模糊想法中提炼核心冲突，设计三幕/五幕结构，规划情节节奏。请针对用户的创作想法，从故事结构角度给出专业建议，包括核心冲突、结构建议和节奏规划。回复控制在200字以内，直接给干货。' },
-  { role: '人物塑造师', emoji: '👤', systemPrompt: '你是一位人物塑造专家。擅长设计立体角色、性格弧光、人物关系网。请针对用户的创作想法，从人物角度给出建议，包括主角特质建议、关键关系设计、成长弧线方向。回复控制在200字以内，直接给干货。' },
-  { role: '世界观设计师', emoji: '🌍', systemPrompt: '你是一位世界观构建专家。擅长设定体系、规则逻辑、历史编年。请针对用户的创作想法，从世界观角度给出建议，包括核心设定、规则体系、环境氛围。回复控制在200字以内，直接给干货。' },
-  { role: '类型顾问', emoji: '📚', systemPrompt: '你是一位网文类型研究专家。熟悉玄幻、言情、悬疑、科幻等各类型套路与创新点。请针对用户的创作想法，判断最适合的类型定位，给出该类型的核心要素建议和差异化方向。回复控制在200字以内，直接给干货。' },
-  { role: '对话专家', emoji: '💬', systemPrompt: '你是一位对话/台词设计专家。擅长角色语言特征、对白节奏、潜台词设计。请针对用户的创作想法，给出关键角色的语言风格建议，并示范1-2句有特色的台词样本。回复控制在200字以内，直接给干货。' },
-  { role: '市场分析师', emoji: '📈', systemPrompt: '你是一位网文市场趋势分析师。熟悉各平台热门题材、读者偏好、算法推荐逻辑。请针对用户的创作想法，从市场角度给出建议，包括目标读者画像、竞品参考、差异化卖点。回复控制在200字以内，直接给干货。' },
-  { role: '文笔润色师', emoji: '✒️', systemPrompt: '你是一位文笔风格专家。擅长语言风格定调、修辞打磨、氛围营造。请针对用户的创作想法，建议最适合的文风基调，并给出一段50字左右的开头示范。回复控制在200字以内，直接给干货。' },
-  { role: '逻辑审查官', emoji: '🔍', systemPrompt: '你是一位逻辑审查专家。擅长发现剧情漏洞、设定冲突、时间线矛盾。请针对用户的创作想法，预判可能出现的逻辑问题，给出需要注意的设定一致性要点。回复控制在200字以内，直接给干货。' }
+  { id: 'architect', role: '故事架构师', emoji: '🏗️', systemPrompt: '你是一位资深故事架构师。擅长从模糊想法中提炼核心冲突，设计三幕/五幕结构，规划情节节奏。请针对用户的创作想法，从故事结构角度给出专业建议，包括核心冲突、结构建议和节奏规划。回复控制在200字以内，直接给干货。' },
+  { id: 'character', role: '人物塑造师', emoji: '👤', systemPrompt: '你是一位人物塑造专家。擅长设计立体角色、性格弧光、人物关系网。请针对用户的创作想法，从人物角度给出建议，包括主角特质建议、关键关系设计、成长弧线方向。回复控制在200字以内，直接给干货。' },
+  { id: 'worldbuilder', role: '世界观设计师', emoji: '🌍', systemPrompt: '你是一位世界观构建专家。擅长设定体系、规则逻辑、历史编年。请针对用户的创作想法，从世界观角度给出建议，包括核心设定、规则体系、环境氛围。回复控制在200字以内，直接给干货。' },
+  { id: 'genre', role: '类型顾问', emoji: '📚', systemPrompt: '你是一位网文类型研究专家。熟悉玄幻、言情、悬疑、科幻等各类型套路与创新点。请针对用户的创作想法，判断最适合的类型定位，给出该类型的核心要素建议和差异化方向。回复控制在200字以内，直接给干货。' },
+  { id: 'dialogue', role: '对话专家', emoji: '💬', systemPrompt: '你是一位对话/台词设计专家。擅长角色语言特征、对白节奏、潜台词设计。请针对用户的创作想法，给出关键角色的语言风格建议，并示范1-2句有特色的台词样本。回复控制在200字以内，直接给干货。' },
+  { id: 'market', role: '市场分析师', emoji: '📈', systemPrompt: '你是一位网文市场趋势分析师。熟悉各平台热门题材、读者偏好、算法推荐逻辑。请针对用户的创作想法，从市场角度给出建议，包括目标读者画像、竞品参考、差异化卖点。回复控制在200字以内，直接给干货。' },
+  { id: 'stylist', role: '文笔润色师', emoji: '✒️', systemPrompt: '你是一位文笔风格专家。擅长语言风格定调、修辞打磨、氛围营造。请针对用户的创作想法，建议最适合的文风基调，并给出一段50字左右的开头示范。回复控制在200字以内，直接给干货。' },
+  { id: 'logic', role: '逻辑审查官', emoji: '🔍', systemPrompt: '你是一位逻辑审查专家。擅长发现剧情漏洞、设定冲突、时间线矛盾。请针对用户的创作想法，预判可能出现的逻辑问题，给出需要注意的设定一致性要点。回复控制在200字以内，直接给干货。' }
 ];
+
+// ===== 三种配置模式 =====
+const CONFIG_MODES = {
+  default: {
+    name: '默认搭配',
+    desc: '所有专家使用同一平台和模型',
+    getConfig: () => {
+      const platform = localStorage.getItem('nrt_platform') || 'deepseek';
+      const apiKey = localStorage.getItem('nrt_apikey') || '';
+      const model = localStorage.getItem('nrt_model') || API_PLATFORMS[platform]?.defaultModel || '';
+      const customUrl = localStorage.getItem('nrt_custom_url') || '';
+      return AI_EXPERTS.map(() => ({ platform, apiKey, model, customUrl }));
+    }
+  },
+  free: {
+    name: '自由搭配',
+    desc: '每位专家可独立配置不同平台/模型',
+    getConfig: () => {
+      return AI_EXPERTS.map((expert, i) => {
+        const saved = localStorage.getItem(`nrt_expert_${i}`);
+        if (saved) return JSON.parse(saved);
+        // fallback to default
+        const platform = localStorage.getItem('nrt_platform') || 'deepseek';
+        const apiKey = localStorage.getItem('nrt_apikey') || '';
+        const model = localStorage.getItem('nrt_model') || API_PLATFORMS[platform]?.defaultModel || '';
+        const customUrl = localStorage.getItem('nrt_custom_url') || '';
+        return { platform, apiKey, model, customUrl };
+      });
+    }
+  },
+  mixed: {
+    name: '混合搭配',
+    desc: '前4位用平台A，后4位用平台B',
+    getConfig: () => {
+      const configA = JSON.parse(localStorage.getItem('nrt_mixed_a') || 'null') || {
+        platform: localStorage.getItem('nrt_platform') || 'deepseek',
+        apiKey: localStorage.getItem('nrt_apikey') || '',
+        model: localStorage.getItem('nrt_model') || '',
+        customUrl: ''
+      };
+      const configB = JSON.parse(localStorage.getItem('nrt_mixed_b') || 'null') || configA;
+      return AI_EXPERTS.map((_, i) => i < 4 ? configA : configB);
+    }
+  }
+};
+
+// ===== 统一 AI 调用函数 =====
+async function callAI({ platform, apiKey, model, customUrl, messages }) {
+  const platformConfig = API_PLATFORMS[platform];
+  if (!platformConfig) throw new Error(`未知平台: ${platform}`);
+
+  const url = platform === 'openai_compatible' ? customUrl : platformConfig.url;
+  if (!url) throw new Error('请配置 API 地址');
+  if (!apiKey) throw new Error('请配置 API Key');
+
+  const finalModel = model || platformConfig.defaultModel;
+  const authHeader = platformConfig.authType === 'appid'
+    ? `appid ${apiKey}`
+    : `Bearer ${apiKey}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': authHeader
+    },
+    body: JSON.stringify({
+      model: finalModel,
+      messages,
+      max_tokens: 500,
+      temperature: 0.8
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`HTTP ${response.status}: ${errText.slice(0, 100)}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
 
 // ===== Data: Expert Definitions (for UI display cards) =====
 const EXPERTS = {
@@ -108,84 +204,143 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ===== Settings Modal =====
 function openSettingsModal() {
+  const overlay = document.getElementById('settingsOverlay');
+  if (!overlay) return;
+
+  // Load saved values
   const platform = localStorage.getItem('nrt_platform') || 'deepseek';
   const apiKey = localStorage.getItem('nrt_apikey') || '';
+  const model = localStorage.getItem('nrt_model') || '';
+  const customUrl = localStorage.getItem('nrt_custom_url') || '';
+  const configMode = localStorage.getItem('nrt_config_mode') || 'default';
+
   document.getElementById('platformSelect').value = platform;
   document.getElementById('apiKeyInput').value = apiKey;
-  document.getElementById('settingsOverlay').classList.add('active');
+  document.getElementById('configModeSelect').value = configMode;
+
+  // Update model options
+  updateModelOptions(platform, model);
+
+  // Show/hide custom URL field
+  const customUrlGroup = document.getElementById('customUrlGroup');
+  if (customUrlGroup) {
+    customUrlGroup.style.display = platform === 'openai_compatible' ? 'block' : 'none';
+    document.getElementById('customUrlInput').value = customUrl;
+  }
+
+  overlay.classList.add('active');
 }
 
 function closeSettingsModal() {
-  document.getElementById('settingsOverlay').classList.remove('active');
+  const overlay = document.getElementById('settingsOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function updateModelOptions(platform, selectedModel) {
+  const modelSelect = document.getElementById('modelSelect');
+  if (!modelSelect) return;
+  const config = API_PLATFORMS[platform];
+  if (!config) return;
+
+  modelSelect.innerHTML = config.models.map(m =>
+    `<option value="${m}" ${m === selectedModel ? 'selected' : ''}>${m}</option>`
+  ).join('');
+
+  if (!selectedModel || !config.models.includes(selectedModel)) {
+    modelSelect.value = config.defaultModel;
+  }
 }
 
 function handleSaveSettings() {
   const platform = document.getElementById('platformSelect').value;
   const apiKey = document.getElementById('apiKeyInput').value.trim();
-  if (!apiKey) { showNotification('请输入 API Key', 'warning'); return; }
-  localStorage.setItem('nrt_platform', platform);
-  localStorage.setItem('nrt_apikey', apiKey);
-  closeSettingsModal();
-  showNotification('设置已保存！', 'success');
-}
-
-// ===== AI Roundtable API Call (Frontend Direct) =====
-async function callRoundtableAI(topic) {
-  const platform = localStorage.getItem('nrt_platform') || 'deepseek';
-  const apiKey = localStorage.getItem('nrt_apikey');
+  const model = document.getElementById('modelSelect').value;
+  const configMode = document.getElementById('configModeSelect').value;
+  const customUrl = document.getElementById('customUrlInput')?.value.trim() || '';
 
   if (!apiKey) {
+    showNotification('请输入 API Key', 'warning');
+    return;
+  }
+
+  if (platform === 'openai_compatible' && !customUrl) {
+    showNotification('OpenAI 兼容模式需要填写 API 地址', 'warning');
+    return;
+  }
+
+  localStorage.setItem('nrt_platform', platform);
+  localStorage.setItem('nrt_apikey', apiKey);
+  localStorage.setItem('nrt_model', model);
+  localStorage.setItem('nrt_config_mode', configMode);
+  localStorage.setItem('nrt_custom_url', customUrl);
+
+  closeSettingsModal();
+  showNotification(`设置已保存！平台: ${API_PLATFORMS[platform].name}`, 'success');
+}
+
+// ===== AI Roundtable: 8 Experts Parallel Call =====
+async function callRoundtableAI(topic) {
+  const configMode = localStorage.getItem('nrt_config_mode') || 'default';
+  const modeHandler = CONFIG_MODES[configMode];
+  if (!modeHandler) {
+    addSystemMessage('❌ 未知的配置模式');
+    return;
+  }
+
+  const configs = modeHandler.getConfig();
+
+  // Check if at least one config has API key
+  const hasKey = configs.some(c => c.apiKey);
+  if (!hasKey) {
     addSystemMessage('⚠️ 请先点击右上角「⚙ 设置」配置你的 API Key');
     openSettingsModal();
     return;
   }
 
-  const config = PLATFORM_CONFIG[platform];
-  if (!config) {
-    addSystemMessage('❌ 未知的平台配置');
-    return;
-  }
-
   // Update chat experts display
-  chatExperts = AI_EXPERTS.map(e => ({ id: e.role, icon: e.emoji, color: '', name: e.role, subtitle: '', skills: [] }));
+  chatExperts = AI_EXPERTS.map(e => ({ id: e.id, icon: e.emoji, color: '', name: e.role, subtitle: '', skills: [] }));
   renderChatExperts();
 
-  addSystemMessage(`⏳ 正在召集 8 位专家（${config.name}），请稍候（约 15-30 秒）...`);
+  const platformName = API_PLATFORMS[configs[0].platform]?.name || configs[0].platform;
+  addSystemMessage(`⏳ 正在召集 8 位专家（${platformName}），并行请求中...`);
 
-  // 8 parallel requests
-  const promises = AI_EXPERTS.map(expert => {
-    return fetch(config.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [
-          { role: 'system', content: expert.systemPrompt },
-          { role: 'user', content: topic }
-        ],
-        max_tokens: 500,
-        temperature: 0.8
-      })
-    }).then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }).then(data => ({
-      success: true,
-      role: expert.role,
-      emoji: expert.emoji,
-      content: data.choices[0].message.content
-    })).catch(err => ({
-      success: false,
-      role: expert.role,
-      emoji: expert.emoji,
-      content: `[请求失败: ${err.message}]`
-    }));
+  // Create progress indicators
+  const progressId = 'progress-' + Date.now();
+  chatMessages.push({
+    type: 'progress',
+    id: progressId,
+    experts: AI_EXPERTS.map(e => ({ id: e.id, emoji: e.emoji, role: e.role, status: 'pending' })),
+    time: new Date()
+  });
+  renderChatMessages();
+
+  // 8 parallel requests using Promise.allSettled
+  const promises = AI_EXPERTS.map((expert, index) => {
+    const cfg = configs[index];
+    return callAI({
+      platform: cfg.platform,
+      apiKey: cfg.apiKey,
+      model: cfg.model,
+      customUrl: cfg.customUrl,
+      messages: [
+        { role: 'system', content: expert.systemPrompt },
+        { role: 'user', content: topic }
+      ]
+    }).then(content => {
+      // Update progress in real-time
+      updateExpertProgress(progressId, expert.id, 'done');
+      return { success: true, expert, content };
+    }).catch(err => {
+      updateExpertProgress(progressId, expert.id, 'error');
+      return { success: false, expert, content: `[请求失败: ${err.message}]` };
+    });
   });
 
   const results = await Promise.allSettled(promises);
+
+  // Remove progress message
+  const progressIdx = chatMessages.findIndex(m => m.id === progressId);
+  if (progressIdx !== -1) chatMessages.splice(progressIdx, 1);
 
   // Remove loading message
   const loadingIdx = chatMessages.findIndex(m => m.type === 'system' && m.text.includes('⏳'));
@@ -195,11 +350,11 @@ async function callRoundtableAI(topic) {
   // Display results one by one with delay
   let successCount = 0;
   for (const result of results) {
-    const val = result.status === 'fulfilled' ? result.value : { success: false, role: '未知', emoji: '❓', content: '[请求异常]' };
-    await delay(600);
+    const val = result.status === 'fulfilled' ? result.value : { success: false, expert: { emoji: '❓', role: '未知' }, content: '[请求异常]' };
+    await delay(400);
     chatMessages.push({
       type: 'expert',
-      expert: { id: val.role, icon: val.emoji, color: '', name: val.role },
+      expert: { id: val.expert.id || 'unknown', icon: val.expert.emoji, color: '', name: val.expert.role },
       text: val.content,
       time: new Date()
     });
@@ -207,12 +362,20 @@ async function callRoundtableAI(topic) {
     if (val.success) successCount++;
   }
 
-  await delay(400);
+  await delay(300);
   if (successCount === 8) {
-    addSystemMessage('✅ 8 位专家已完成分析，你可以继续提问或开始写作');
+    addSystemMessage('✅ 8 位专家已全部完成分析！你可以继续提问深入讨论，或开始写作。');
   } else {
-    addSystemMessage(`⚠️ ${successCount}/8 位专家完成回复，部分请求失败，请检查 API Key 或网络`);
+    addSystemMessage(`⚠️ ${successCount}/8 位专家完成回复，部分请求失败。请检查 API Key 或网络连接。`);
   }
+}
+
+function updateExpertProgress(progressId, expertId, status) {
+  const msg = chatMessages.find(m => m.id === progressId);
+  if (!msg) return;
+  const expert = msg.experts.find(e => e.id === expertId);
+  if (expert) expert.status = status;
+  renderChatMessages();
 }
 
 function delay(ms) {
@@ -225,7 +388,7 @@ function initParticles() {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   let particles = [];
-  
+
   function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -316,7 +479,7 @@ function initMaterials() {
   if (!tabsContainer || !gridContainer) return;
 
   const categories = Object.keys(MATERIALS);
-  tabsContainer.innerHTML = categories.map((cat, i) => 
+  tabsContainer.innerHTML = categories.map((cat, i) =>
     `<span class="material-tab ${i === 0 ? 'active' : ''}" data-category="${cat}">${cat} - ${MATERIALS[cat].count}</span>`
   ).join('');
 
@@ -402,7 +565,7 @@ function initEventListeners() {
   document.addEventListener('click', function(e) {
     const inviteBtn = e.target.closest('[data-action="invite"]');
     const detailBtn = e.target.closest('[data-action="detail"]');
-    
+
     if (inviteBtn) {
       e.stopPropagation();
       const card = inviteBtn.closest('.expert-card');
@@ -447,12 +610,36 @@ function initEventListeners() {
   // Expert Info Button
   document.getElementById('btnExpertInfo').addEventListener('click', showExpertInfoModal);
 
-  // Settings
-  document.getElementById('btnSettings').addEventListener('click', openSettingsModal);
-  document.getElementById('settingsClose').addEventListener('click', closeSettingsModal);
-  document.getElementById('btnCancelSettings').addEventListener('click', closeSettingsModal);
-  document.getElementById('btnSaveSettings').addEventListener('click', handleSaveSettings);
-  document.getElementById('settingsOverlay').addEventListener('click', function(e) { if (e.target === this) closeSettingsModal(); });
+  // Settings - use onclick attribute as fallback for reliability
+  const btnSettings = document.getElementById('btnSettings');
+  if (btnSettings) {
+    btnSettings.addEventListener('click', openSettingsModal);
+    btnSettings.onclick = openSettingsModal;
+  }
+
+  const settingsClose = document.getElementById('settingsClose');
+  if (settingsClose) settingsClose.addEventListener('click', closeSettingsModal);
+
+  const btnCancelSettings = document.getElementById('btnCancelSettings');
+  if (btnCancelSettings) btnCancelSettings.addEventListener('click', closeSettingsModal);
+
+  const btnSaveSettings = document.getElementById('btnSaveSettings');
+  if (btnSaveSettings) btnSaveSettings.addEventListener('click', handleSaveSettings);
+
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  if (settingsOverlay) settingsOverlay.addEventListener('click', function(e) { if (e.target === this) closeSettingsModal(); });
+
+  // Platform select change -> update model options & custom URL visibility
+  const platformSelect = document.getElementById('platformSelect');
+  if (platformSelect) {
+    platformSelect.addEventListener('change', function() {
+      updateModelOptions(this.value, '');
+      const customUrlGroup = document.getElementById('customUrlGroup');
+      if (customUrlGroup) {
+        customUrlGroup.style.display = this.value === 'openai_compatible' ? 'block' : 'none';
+      }
+    });
+  }
 
   // Modal
   document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -661,7 +848,7 @@ function closeChatPanel() {
 
 function renderChatExperts() {
   const container = document.getElementById('chatExperts');
-  container.innerHTML = chatExperts.slice(0, 5).map(e => 
+  container.innerHTML = chatExperts.slice(0, 5).map(e =>
     `<div class="chat-expert-avatar expert-avatar ${e.color}" style="width:28px;height:28px;font-size:14px;border-radius:8px;">${e.icon}</div>`
   ).join('') + (chatExperts.length > 5 ? `<span style="font-size:12px;color:var(--text-muted);">+${chatExperts.length - 5}</span>` : '');
   document.getElementById('chatTitle').textContent = `圆桌讨论 (${chatExperts.length} 位专家)`;
@@ -689,6 +876,22 @@ function renderChatMessages() {
       return `<div class="chat-message"><div class="msg-avatar expert-avatar" style="width:36px;height:36px;font-size:16px;background:var(--gradient-3);">⚡</div><div class="msg-content"><div class="msg-name">系统</div><div class="msg-text">${msg.text}</div></div></div>`;
     } else if (msg.type === 'user') {
       return `<div class="chat-message user"><div class="msg-avatar expert-avatar" style="width:36px;height:36px;font-size:16px;background:var(--gradient-2);">👤</div><div class="msg-content"><div class="msg-name">你</div><div class="msg-text">${msg.text}</div></div></div>`;
+    } else if (msg.type === 'progress') {
+      return `<div class="chat-message progress-panel">
+        <div class="msg-avatar expert-avatar" style="width:36px;height:36px;font-size:16px;background:var(--gradient-1);">⏳</div>
+        <div class="msg-content">
+          <div class="msg-name">实时进度</div>
+          <div class="expert-progress-grid">
+            ${msg.experts.map(e => `
+              <div class="expert-progress-item ${e.status}">
+                <span class="ep-emoji">${e.emoji}</span>
+                <span class="ep-name">${e.role}</span>
+                <span class="ep-status">${e.status === 'pending' ? '⏳' : e.status === 'done' ? '✅' : '❌'}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>`;
     } else {
       return `<div class="chat-message"><div class="msg-avatar expert-avatar ${msg.expert.color}" style="width:36px;height:36px;font-size:16px;">${msg.expert.icon}</div><div class="msg-content"><div class="msg-name">${msg.expert.name}</div><div class="msg-text">${msg.text}</div></div></div>`;
     }
@@ -700,7 +903,7 @@ function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
-  
+
   chatMessages.push({ type: 'user', text, time: new Date() });
   input.value = '';
   renderChatMessages();
@@ -713,10 +916,10 @@ function submitIdea() {
   const input = document.getElementById('creativeInput');
   const text = input.value.trim();
   if (!text) { showNotification('请先输入你的创作想法', 'warning'); return; }
-  
+
   if (!currentSession) createNewSession();
   openChatPanel();
-  
+
   chatMessages.push({ type: 'user', text, time: new Date() });
   renderChatMessages();
 
@@ -738,7 +941,7 @@ function showNotification(message, type = 'info') {
   notification.className = `notification ${type}`;
   notification.textContent = message;
   container.appendChild(notification);
-  
+
   setTimeout(() => {
     notification.classList.add('exit');
     setTimeout(() => notification.remove(), 300);
