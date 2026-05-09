@@ -98,7 +98,7 @@ async function callAI(platform, apiKey, model, messages, opts = {}) {
   const url = platform === 'openai_compatible' ? keys.customUrl : pc.url;
   if (!url) throw new Error('请配置 API 地址');
   if (!apiKey) throw new Error('请配置 ' + pc.name + ' 的 API Key');
-  const auth = pc.authType === 'appid' ? 'appid ' + apiKey : 'Bearer ' + apiKey;
+  const auth = pc.authType === 'appid' ? apiKey : 'Bearer ' + apiKey;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': auth },
