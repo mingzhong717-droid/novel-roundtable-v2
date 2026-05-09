@@ -573,201 +573,97 @@ function sendChatMessage() {
   input.value = '';
   renderChatMessages();
 
-  // Simulate expert responses
-  if (chatExperts.length > 0) {
-    setTimeout(() => {
-      const expert = chatExperts[Math.floor(Math.random() * chatExperts.length)];
-      const responses = generateExpertResponse(expert, text);
-      chatMessages.push({ type: 'expert', expert, text: responses, time: new Date() });
-      renderChatMessages();
-    }, 800 + Math.random() * 1200);
+  // Call backend API for real expert discussion
+  callRoundtableAPI(text);
+}
+
+// ===== Backend API Integration =====
+const API_URL = 'http://localhost:3001/roundtable';
+
+async function callRoundtableAPI(topic) {
+  // Show loading message
+  addSystemMessage('\u23f3 \u6b63\u5728\u53ec\u96c6 8 \u4f4d\u4e13\u5bb6\uff0c\u8bf7\u7a0d\u5019\uff08\u7ea6 30 \u79d2\uff09...');
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Remove the loading message
+    const loadingIdx = chatMessages.findIndex(m => m.type === 'system' && m.text.includes('\u23f3'));
+    if (loadingIdx !== -1) chatMessages.splice(loadingIdx, 1);
+    renderChatMessages();
+
+    // Display expert responses one by one with delay
+    if (data.results && data.results.length > 0) {
+      // Update chatExperts based on API response
+      chatExperts = data.results.map(r => ({
+        id: r.role,
+        icon: r.emoji,
+        color: '',
+        name: r.role,
+        subtitle: '',
+        skills: []
+      }));
+      renderChatExperts();
+
+      for (let i = 0; i < data.results.length; i++) {
+        await delay(1200);
+        const result = data.results[i];
+        chatMessages.push({
+          type: 'expert',
+          expert: { id: result.role, icon: result.emoji, color: '', name: result.role },
+          text: result.content,
+          time: new Date()
+        });
+        renderChatMessages();
+      }
+
+      // Final system message
+      await delay(800);
+      addSystemMessage('\u2705 8 \u4f4d\u4e13\u5bb6\u5df2\u5b8c\u6210\u5206\u6790\uff0c\u4f60\u53ef\u4ee5\u7ee7\u7eed\u63d0\u95ee\u6216\u5f00\u59cb\u5199\u4f5c');
+    }
+  } catch (err) {
+    // Remove loading message on error
+    const loadingIdx = chatMessages.findIndex(m => m.type === 'system' && m.text.includes('\u23f3'));
+    if (loadingIdx !== -1) chatMessages.splice(loadingIdx, 1);
+    renderChatMessages();
+
+    addSystemMessage('\u274c \u540e\u7aef\u8fde\u63a5\u5931\u8d25\uff0c\u8bf7\u786e\u8ba4\u670d\u52a1\u5df2\u542f\u52a8\uff08localhost:3001\uff09');
+    showNotification('\u540e\u7aef\u8fde\u63a5\u5931\u8d25', 'warning');
   }
 }
 
-// P0 FIX: Expert response now references user's actual input
-function generateExpertResponse(expert, userText) {
-  // Extract a short snippet from user input for personalization
-  const snippet = userText.length > 20 ? userText.substring(0, 20) + '...' : userText;
-
-  const responseTemplates = {
-    architect: [
-      `关于「${snippet}」，从结构角度看，核心冲突可以围绕"身份认知"展开。建议采用三幕结构：第一幕建立日常与悬念，第二幕逐步揭示真相，第三幕面对抉择。`,
-      `你提到的「${snippet}」很有潜力。这个故事可以用"洋葱式"叙事——每揭开一层，都有新的悬念。建议设置3-4个关键转折点。`,
-      `针对「${snippet}」，情节节奏建议：前5章快速建立悬念，中间部分交替推进主线和支线，高潮前设置一个"虚假胜利"增加反转力度。`
-    ],
-    character: [
-      `从「${snippet}」来看，主角的性格弧光可以设计为：从"逃避过去"到"直面真相"。建议给TA一个标志性的习惯动作来体现内心状态。`,
-      `基于你描述的「${snippet}」，建议为主角设计一个"致命缺陷"和一个"隐藏优势"，这样角色成长才有说服力。`,
-      `你的想法「${snippet}」中，配角建议设置一个"镜像角色"——和主角有相似经历但做出不同选择的人，形成对照。`
-    ],
-    worldbuilder: [
-      `关于「${snippet}」的世界设定，规则体系需要先确定：什么是可能的，什么是不可能的。建议从"限制"入手设计，有限制才有戏剧性。`,
-      `你提到的「${snippet}」，建议先画一张简单的势力关系图，确定各方的利益诉求和冲突点。`,
-      `针对「${snippet}」，世界观设定的关键是"冰山理论"——展示给读者的只是十分之一，但你需要知道水面下的全部。`
-    ],
-    stylist: [
-      `关于「${snippet}」的文笔风格，建议采用"冷峻克制"的叙事风格，用短句营造紧张感，长句用于情感释放的关键时刻。`,
-      `你描述的「${snippet}」，氛围营造建议：多用感官描写（声音、气味、触感），少用直接的情绪词汇，让读者自己感受。`,
-      `针对「${snippet}」，视角建议用限制性第一人称，这样读者和主角一起发现真相，悬疑感更强。`
-    ],
-    dialogue: [
-      `关于「${snippet}」中的对话设计，建议给主角设计一个语言特征：比如习惯用反问句，或者在紧张时会重复对方的话。`,
-      `你提到的「${snippet}」，对话节奏建议：重要信息用短对话快速推进，情感场景用长对话慢慢铺垫，沉默也是一种对话。`,
-      `针对「${snippet}」的群戏对话，关键是让每个人都有"说话的理由"，避免角色沦为信息传递工具。`
-    ],
-    xianxia: [
-      `关于「${snippet}」的仙侠设定，修炼体系建议设计9个大境界，每个境界3个小阶段。关键是每个境界突破都要有"质变"而非单纯的量变。`,
-      `你提到的「${snippet}」，升级节奏建议：前期快速升级建立爽感，中期放慢节奏深化世界观，后期每次突破都是大事件。`
-    ],
-    romance: [
-      `关于「${snippet}」的感情线，建议用"三进三退"节奏：每次靠近后都有一个合理的阻碍，让读者既着急又期待。`,
-      `你描述的「${snippet}」，建议设计3个"名场面"作为感情线的里程碑，这些场景要有强烈的画面感和情感冲击力。`
-    ],
-    mystery: [
-      `关于「${snippet}」的悬疑设计，核心诡计建议采用"双重误导"：第一层误导让读者怀疑A，第二层误导让读者确信B，真相是C。`,
-      `你提到的「${snippet}」，线索布置建议遵循"三次法则"：重要线索至少出现三次，但每次以不同形式呈现。`
-    ],
-    scifi: [
-      `关于「${snippet}」的科幻设定，建议从一个"核心假设"出发推演：如果X技术实现了，社会会发生什么变化？`,
-      `你描述的「${snippet}」，建议设计一个"技术代价"——每项强大的技术都有其副作用或社会成本，这让设定更真实。`
-    ],
-    market: [
-      `关于「${snippet}」的市场定位，当前热门方向：都市异能+悬疑、古代宫廷+权谋、末世生存+团队。建议结合你的优势选择。`,
-      `你提到的「${snippet}」，目标读者画像建议先确定：年龄段、阅读平台、付费意愿。这决定了你的写作策略。`
-    ],
-    logic: [
-      `关于「${snippet}」的逻辑检查，建议建立一个"设定检查表"：每写完一章，对照检查时间线、角色位置、已知信息是否一致。`,
-      `你描述的「${snippet}」，常见逻辑漏洞：角色突然知道不该知道的信息、时间线矛盾、设定前后不一致。建议每5章做一次自查。`
-    ],
-    editor: [
-      `关于「${snippet}」的整体节奏，建议：开头3章必须抓住读者，中间保持"每章一个小钩子"，结尾要有余韵。`,
-      `你提到的「${snippet}」，建议控制章节长度在2000-3000字，每章结尾留一个悬念或情感钩子，提高读者续读率。`
-    ]
-  };
-  const expertResponses = responseTemplates[expert.id] || [`收到你关于「${snippet}」的想法，让我从专业角度分析一下...`];
-  return expertResponses[Math.floor(Math.random() * expertResponses.length)];
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ===== Submit Creative Idea - P0 FIX: Correct expert matching logic =====
+// ===== Submit Creative Idea - Calls real backend API =====
 function submitIdea() {
   const input = document.getElementById('creativeInput');
   const text = input.value.trim();
-  if (!text) { showNotification('请先输入你的创作想法', 'warning'); return; }
+  if (!text) { showNotification('\u8bf7\u5148\u8f93\u5165\u4f60\u7684\u521b\u4f5c\u60f3\u6cd5', 'warning'); return; }
   
   if (!currentSession) createNewSession();
-  
-  // P0 FIX: Correct keyword-to-expert matching rules
-  // Rule: Match based on content keywords to appropriate expert combinations
-  const matchRules = [
-    {
-      // 言情/都市/重生/爽文/商业/职场/酒店/恋爱 -> architect + romance
-      keywords: ['言情', '都市', '重生', '爽文', '商业', '职场', '酒店', '恋爱', '甜宠', '虐恋', '总裁', '豪门', '霸道', '暗恋', '表白', '相亲', '婚姻'],
-      experts: ['architect', 'romance']
-    },
-    {
-      // 悬疑/推理/凶手/密室/案件/侦探/线索 -> architect + mystery
-      keywords: ['悬疑', '推理', '凶手', '密室', '案件', '侦探', '线索', '谋杀', '犯罪', '破案', '诡计', '死亡', '嫌疑'],
-      experts: ['architect', 'mystery']
-    },
-    {
-      // 仙侠/玄幻/修炼/修仙/境界/宗门/飞升/法宝 -> architect + xianxia + worldbuilder
-      keywords: ['仙侠', '玄幻', '修炼', '修仙', '境界', '宗门', '飞升', '法宝', '灵气', '渡劫', '功法', '丹药', '妖兽', '仙界'],
-      experts: ['architect', 'xianxia', 'worldbuilder']
-    },
-    {
-      // 科幻/未来/太空/AI/机器人/赛博/星际 -> architect + scifi + worldbuilder
-      keywords: ['科幻', '未来', '太空', 'AI', '机器人', '赛博', '星际', '外星', '飞船', '克隆', '虚拟', '末日', '废土'],
-      experts: ['architect', 'scifi', 'worldbuilder']
-    },
-    {
-      // 人物/角色/主角/人设/性格 -> architect + character
-      keywords: ['人物', '角色', '主角', '人设', '性格', '配角', '反派', '女主', '男主'],
-      experts: ['architect', 'character']
-    },
-    {
-      // 文笔/风格/语言/描写/润色 -> stylist
-      keywords: ['文笔', '风格', '语言', '描写', '润色', '修辞', '氛围'],
-      experts: ['stylist']
-    },
-    {
-      // 对话/台词/对白 -> dialogue
-      keywords: ['对话', '台词', '对白', '说话', '口头禅'],
-      experts: ['dialogue']
-    },
-    {
-      // 市场/热门/趋势/读者/选题 -> market
-      keywords: ['市场', '热门', '趋势', '读者', '选题', '平台', '签约'],
-      experts: ['market']
-    },
-    {
-      // 逻辑/漏洞/bug/矛盾 -> logic
-      keywords: ['逻辑', '漏洞', 'bug', '矛盾', '不合理'],
-      experts: ['logic']
-    },
-    {
-      // 节奏/出版/定稿/修改 -> editor
-      keywords: ['节奏', '出版', '定稿', '修改', '大纲', '结构'],
-      experts: ['editor']
-    }
-  ];
 
-  let recommended = [];
-  
-  // Check each rule - first matching rule wins (priority order)
-  for (const rule of matchRules) {
-    if (rule.keywords.some(w => text.includes(w))) {
-      rule.experts.forEach(expertId => {
-        const expert = Object.values(EXPERTS).flat().find(e => e.id === expertId);
-        if (expert && !recommended.find(r => r.id === expertId)) {
-          recommended.push(expert);
-        }
-      });
-      break; // Use first matching rule
-    }
-  }
-
-  // If no rule matched, also try a broader scan across all rules
-  if (recommended.length === 0) {
-    for (const rule of matchRules) {
-      if (rule.keywords.some(w => text.includes(w))) {
-        rule.experts.forEach(expertId => {
-          const expert = Object.values(EXPERTS).flat().find(e => e.id === expertId);
-          if (expert && !recommended.find(r => r.id === expertId)) {
-            recommended.push(expert);
-          }
-        });
-      }
-    }
-  }
-
-  // Default fallback: recommend architect + market if nothing matched
-  if (recommended.length === 0) {
-    recommended = [
-      Object.values(EXPERTS).flat().find(e => e.id === 'architect'),
-      Object.values(EXPERTS).flat().find(e => e.id === 'market')
-    ];
-  }
-
-  chatExperts = recommended.slice(0, 4);
   openChatPanel();
-  
-  const expertNames = chatExperts.map(e => e.name).join('、');
-  addSystemMessage(`根据你的创作想法，已为你推荐：${expertNames}。他们将为你提供专业建议。`);
   
   // Add user message
   chatMessages.push({ type: 'user', text, time: new Date() });
   renderChatMessages();
 
-  // Simulate expert responses - P0 FIX: responses reference user input
-  chatExperts.forEach((expert, index) => {
-    setTimeout(() => {
-      const response = generateExpertResponse(expert, text);
-      chatMessages.push({ type: 'expert', expert, text: response, time: new Date() });
-      renderChatMessages();
-    }, 1000 + index * 1500);
-  });
+  // Call real backend API
+  callRoundtableAPI(text);
 
-  showNotification(`已匹配 ${chatExperts.length} 位专家，圆桌讨论开始！`, 'success');
+  showNotification('\u5df2\u63d0\u4ea4\u521b\u4f5c\u60f3\u6cd5\uff0c\u4e13\u5bb6\u56e2\u961f\u6b63\u5728\u5206\u6790...', 'success');
 }
 
 // ===== Theme Toggle - P1 FIX: now actually works =====
