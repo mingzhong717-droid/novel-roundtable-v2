@@ -1,6 +1,37 @@
-// ===== NovelRoundTable - Complete Interactive JavaScript =====
+// ===== NovelRoundTable - Frontend AI Roundtable Discussion =====
 
-// ===== Data: Expert Definitions =====
+// ===== AI Platform Configuration =====
+const PLATFORM_CONFIG = {
+  deepseek: {
+    url: 'https://api.deepseek.com/v1/chat/completions',
+    model: 'deepseek-chat',
+    name: 'DeepSeek'
+  },
+  qwen: {
+    url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    model: 'qwen-plus',
+    name: '通义千问'
+  },
+  openai: {
+    url: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o-mini',
+    name: 'OpenAI'
+  }
+};
+
+// ===== 8 AI Experts with System Prompts =====
+const AI_EXPERTS = [
+  { role: '故事架构师', emoji: '🏗️', systemPrompt: '你是一位资深故事架构师。擅长从模糊想法中提炼核心冲突，设计三幕/五幕结构，规划情节节奏。请针对用户的创作想法，从故事结构角度给出专业建议，包括核心冲突、结构建议和节奏规划。回复控制在200字以内，直接给干货。' },
+  { role: '人物塑造师', emoji: '👤', systemPrompt: '你是一位人物塑造专家。擅长设计立体角色、性格弧光、人物关系网。请针对用户的创作想法，从人物角度给出建议，包括主角特质建议、关键关系设计、成长弧线方向。回复控制在200字以内，直接给干货。' },
+  { role: '世界观设计师', emoji: '🌍', systemPrompt: '你是一位世界观构建专家。擅长设定体系、规则逻辑、历史编年。请针对用户的创作想法，从世界观角度给出建议，包括核心设定、规则体系、环境氛围。回复控制在200字以内，直接给干货。' },
+  { role: '类型顾问', emoji: '📚', systemPrompt: '你是一位网文类型研究专家。熟悉玄幻、言情、悬疑、科幻等各类型套路与创新点。请针对用户的创作想法，判断最适合的类型定位，给出该类型的核心要素建议和差异化方向。回复控制在200字以内，直接给干货。' },
+  { role: '对话专家', emoji: '💬', systemPrompt: '你是一位对话/台词设计专家。擅长角色语言特征、对白节奏、潜台词设计。请针对用户的创作想法，给出关键角色的语言风格建议，并示范1-2句有特色的台词样本。回复控制在200字以内，直接给干货。' },
+  { role: '市场分析师', emoji: '📈', systemPrompt: '你是一位网文市场趋势分析师。熟悉各平台热门题材、读者偏好、算法推荐逻辑。请针对用户的创作想法，从市场角度给出建议，包括目标读者画像、竞品参考、差异化卖点。回复控制在200字以内，直接给干货。' },
+  { role: '文笔润色师', emoji: '✒️', systemPrompt: '你是一位文笔风格专家。擅长语言风格定调、修辞打磨、氛围营造。请针对用户的创作想法，建议最适合的文风基调，并给出一段50字左右的开头示范。回复控制在200字以内，直接给干货。' },
+  { role: '逻辑审查官', emoji: '🔍', systemPrompt: '你是一位逻辑审查专家。擅长发现剧情漏洞、设定冲突、时间线矛盾。请针对用户的创作想法，预判可能出现的逻辑问题，给出需要注意的设定一致性要点。回复控制在200字以内，直接给干货。' }
+];
+
+// ===== Data: Expert Definitions (for UI display cards) =====
 const EXPERTS = {
   core: [
     { id: 'architect', icon: '&#127916;', color: '', name: '故事架构师', subtitle: '情节设计 - 结构规划', scenario: '题目还没收敛时，先做故事定位与核心冲突判断', skills: ['情节构建', '结构设计', '冲突编排', '节奏控制'], deliverables: ['故事大纲', '章节规划', '冲突设计表', '节奏曲线图', '转折点清单'], desc: '故事架构师是整个创作团队的核心引擎。TA 擅长从一个模糊的想法中提炼出故事的核心冲突，设计完整的三幕/五幕结构，规划情节节奏曲线，确保故事从开头到结尾都有强大的叙事张力。' },
@@ -75,6 +106,119 @@ document.addEventListener('DOMContentLoaded', function() {
   initNumberAnimations();
 });
 
+// ===== Settings Modal =====
+function openSettingsModal() {
+  const platform = localStorage.getItem('nrt_platform') || 'deepseek';
+  const apiKey = localStorage.getItem('nrt_apikey') || '';
+  document.getElementById('platformSelect').value = platform;
+  document.getElementById('apiKeyInput').value = apiKey;
+  document.getElementById('settingsOverlay').classList.add('active');
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsOverlay').classList.remove('active');
+}
+
+function handleSaveSettings() {
+  const platform = document.getElementById('platformSelect').value;
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  if (!apiKey) { showNotification('请输入 API Key', 'warning'); return; }
+  localStorage.setItem('nrt_platform', platform);
+  localStorage.setItem('nrt_apikey', apiKey);
+  closeSettingsModal();
+  showNotification('设置已保存！', 'success');
+}
+
+// ===== AI Roundtable API Call (Frontend Direct) =====
+async function callRoundtableAI(topic) {
+  const platform = localStorage.getItem('nrt_platform') || 'deepseek';
+  const apiKey = localStorage.getItem('nrt_apikey');
+
+  if (!apiKey) {
+    addSystemMessage('⚠️ 请先点击右上角「⚙ 设置」配置你的 API Key');
+    openSettingsModal();
+    return;
+  }
+
+  const config = PLATFORM_CONFIG[platform];
+  if (!config) {
+    addSystemMessage('❌ 未知的平台配置');
+    return;
+  }
+
+  // Update chat experts display
+  chatExperts = AI_EXPERTS.map(e => ({ id: e.role, icon: e.emoji, color: '', name: e.role, subtitle: '', skills: [] }));
+  renderChatExperts();
+
+  addSystemMessage(`⏳ 正在召集 8 位专家（${config.name}），请稍候（约 15-30 秒）...`);
+
+  // 8 parallel requests
+  const promises = AI_EXPERTS.map(expert => {
+    return fetch(config.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: 'system', content: expert.systemPrompt },
+          { role: 'user', content: topic }
+        ],
+        max_tokens: 500,
+        temperature: 0.8
+      })
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }).then(data => ({
+      success: true,
+      role: expert.role,
+      emoji: expert.emoji,
+      content: data.choices[0].message.content
+    })).catch(err => ({
+      success: false,
+      role: expert.role,
+      emoji: expert.emoji,
+      content: `[请求失败: ${err.message}]`
+    }));
+  });
+
+  const results = await Promise.allSettled(promises);
+
+  // Remove loading message
+  const loadingIdx = chatMessages.findIndex(m => m.type === 'system' && m.text.includes('⏳'));
+  if (loadingIdx !== -1) chatMessages.splice(loadingIdx, 1);
+  renderChatMessages();
+
+  // Display results one by one with delay
+  let successCount = 0;
+  for (const result of results) {
+    const val = result.status === 'fulfilled' ? result.value : { success: false, role: '未知', emoji: '❓', content: '[请求异常]' };
+    await delay(600);
+    chatMessages.push({
+      type: 'expert',
+      expert: { id: val.role, icon: val.emoji, color: '', name: val.role },
+      text: val.content,
+      time: new Date()
+    });
+    renderChatMessages();
+    if (val.success) successCount++;
+  }
+
+  await delay(400);
+  if (successCount === 8) {
+    addSystemMessage('✅ 8 位专家已完成分析，你可以继续提问或开始写作');
+  } else {
+    addSystemMessage(`⚠️ ${successCount}/8 位专家完成回复，部分请求失败，请检查 API Key 或网络`);
+  }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // ===== Particle Background =====
 function initParticles() {
   const canvas = document.getElementById('particlesCanvas');
@@ -117,7 +261,6 @@ function initParticles() {
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(p => { p.update(); p.draw(); });
-    // Draw connections
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
         const dx = particles[i].x - particles[j].x;
@@ -206,7 +349,6 @@ function initScrollReveal() {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('visible');
-        // Trigger number animations for stat elements within
         animateNumbers(entry.target);
       }
     });
@@ -216,9 +358,7 @@ function initScrollReveal() {
 }
 
 // ===== Number Animations =====
-function initNumberAnimations() {
-  // Will be triggered by scroll reveal
-}
+function initNumberAnimations() {}
 
 function animateNumbers(container) {
   const numbers = container.querySelectorAll('[data-target]');
@@ -277,13 +417,11 @@ function initEventListeners() {
     }
   });
 
-  // Creative Input Tips - P0 FIX: add active state + fill textarea
+  // Creative Input Tips
   document.querySelectorAll('.tip-tag').forEach(tag => {
     tag.addEventListener('click', function() {
-      // Toggle active state
       document.querySelectorAll('.tip-tag').forEach(t => t.classList.remove('active'));
       this.classList.add('active');
-      // Fill textarea with tip text
       document.getElementById('creativeInput').value = this.dataset.tip;
       document.getElementById('creativeInput').focus();
     });
@@ -306,8 +444,15 @@ function initEventListeners() {
   document.getElementById('btnViewMaterials').addEventListener('click', () => { document.getElementById('materials').scrollIntoView({ behavior: 'smooth' }); });
   document.getElementById('btnViewExperts').addEventListener('click', () => { document.getElementById('expertSection').scrollIntoView({ behavior: 'smooth' }); });
 
-  // Expert Info Button - P1 FIX: show all experts modal
+  // Expert Info Button
   document.getElementById('btnExpertInfo').addEventListener('click', showExpertInfoModal);
+
+  // Settings
+  document.getElementById('btnSettings').addEventListener('click', openSettingsModal);
+  document.getElementById('settingsClose').addEventListener('click', closeSettingsModal);
+  document.getElementById('btnCancelSettings').addEventListener('click', closeSettingsModal);
+  document.getElementById('btnSaveSettings').addEventListener('click', handleSaveSettings);
+  document.getElementById('settingsOverlay').addEventListener('click', function(e) { if (e.target === this) closeSettingsModal(); });
 
   // Modal
   document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -345,7 +490,7 @@ function initEventListeners() {
 
   // Keyboard shortcut: Escape to close panels
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') { closeModal(); closeChatPanel(); }
+    if (e.key === 'Escape') { closeModal(); closeSettingsModal(); closeChatPanel(); }
   });
 }
 
@@ -454,7 +599,6 @@ function showExpertDetail(expertId) {
   modal.classList.add('active');
 }
 
-// ===== Expert Info Modal (All 12 Experts) - P1 FIX =====
 function showExpertInfoModal() {
   const modal = document.getElementById('modalOverlay');
   const header = document.getElementById('modalHeader');
@@ -462,7 +606,7 @@ function showExpertInfoModal() {
 
   header.innerHTML = `
     <div class="modal-expert-top">
-      <div class="modal-avatar expert-avatar" style="width:64px;height:64px;border-radius:16px;font-size:28px;background:var(--gradient-1);">&#128101;</div>
+      <div class="modal-avatar expert-avatar" style="width:64px;height:64px;border-radius:16px;font-size:28px;background:var(--gradient-1);">👥</div>
       <div class="modal-title"><h2>12 位创作专家一览</h2><p>核心团队 + 类型专家 + 支持团队</p></div>
     </div>
   `;
@@ -511,20 +655,8 @@ function openChatPanel() {
   renderChatMessages();
 }
 
-// P1 FIX: Close chat panel and show guidance text
 function closeChatPanel() {
   document.getElementById('chatPanel').classList.remove('open');
-  // Show guidance in the main content area if no active discussion
-  const messagesContainer = document.getElementById('chatMessages');
-  if (chatMessages.length === 0) {
-    messagesContainer.innerHTML = `
-      <div class="chat-guidance">
-        <div class="cg-icon">&#128172;</div>
-        <h4>圆桌讨论尚未开始</h4>
-        <p>在左侧输入框描述你的创作想法，或从专家列表中邀请一位专家开始讨论。<br>你也可以点击「一键进入 12 位专家讨论」快速开始。</p>
-      </div>
-    `;
-  }
 }
 
 function renderChatExperts() {
@@ -545,7 +677,7 @@ function renderChatMessages() {
   if (chatMessages.length === 0) {
     container.innerHTML = `
       <div class="chat-guidance">
-        <div class="cg-icon">&#128172;</div>
+        <div class="cg-icon">💬</div>
         <h4>圆桌讨论尚未开始</h4>
         <p>在左侧输入框描述你的创作想法，或从专家列表中邀请一位专家开始讨论。<br>你也可以点击「一键进入 12 位专家讨论」快速开始。</p>
       </div>
@@ -554,9 +686,9 @@ function renderChatMessages() {
   }
   container.innerHTML = chatMessages.map(msg => {
     if (msg.type === 'system') {
-      return `<div class="chat-message"><div class="msg-avatar expert-avatar" style="width:36px;height:36px;font-size:16px;background:var(--gradient-3);">&#9889;</div><div class="msg-content"><div class="msg-name">系统</div><div class="msg-text">${msg.text}</div></div></div>`;
+      return `<div class="chat-message"><div class="msg-avatar expert-avatar" style="width:36px;height:36px;font-size:16px;background:var(--gradient-3);">⚡</div><div class="msg-content"><div class="msg-name">系统</div><div class="msg-text">${msg.text}</div></div></div>`;
     } else if (msg.type === 'user') {
-      return `<div class="chat-message user"><div class="msg-avatar expert-avatar" style="width:36px;height:36px;font-size:16px;background:var(--gradient-2);">&#128100;</div><div class="msg-content"><div class="msg-name">你</div><div class="msg-text">${msg.text}</div></div></div>`;
+      return `<div class="chat-message user"><div class="msg-avatar expert-avatar" style="width:36px;height:36px;font-size:16px;background:var(--gradient-2);">👤</div><div class="msg-content"><div class="msg-name">你</div><div class="msg-text">${msg.text}</div></div></div>`;
     } else {
       return `<div class="chat-message"><div class="msg-avatar expert-avatar ${msg.expert.color}" style="width:36px;height:36px;font-size:16px;">${msg.expert.icon}</div><div class="msg-content"><div class="msg-name">${msg.expert.name}</div><div class="msg-text">${msg.text}</div></div></div>`;
     }
@@ -573,104 +705,30 @@ function sendChatMessage() {
   input.value = '';
   renderChatMessages();
 
-  // Call backend API for real expert discussion
-  callRoundtableAPI(text);
+  callRoundtableAI(text);
 }
 
-// ===== Backend API Integration =====
-const API_URL = 'http://localhost:3001/roundtable';
-
-async function callRoundtableAPI(topic) {
-  // Show loading message
-  addSystemMessage('\u23f3 \u6b63\u5728\u53ec\u96c6 8 \u4f4d\u4e13\u5bb6\uff0c\u8bf7\u7a0d\u5019\uff08\u7ea6 30 \u79d2\uff09...');
-
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Remove the loading message
-    const loadingIdx = chatMessages.findIndex(m => m.type === 'system' && m.text.includes('\u23f3'));
-    if (loadingIdx !== -1) chatMessages.splice(loadingIdx, 1);
-    renderChatMessages();
-
-    // Display expert responses one by one with delay
-    if (data.results && data.results.length > 0) {
-      // Update chatExperts based on API response
-      chatExperts = data.results.map(r => ({
-        id: r.role,
-        icon: r.emoji,
-        color: '',
-        name: r.role,
-        subtitle: '',
-        skills: []
-      }));
-      renderChatExperts();
-
-      for (let i = 0; i < data.results.length; i++) {
-        await delay(1200);
-        const result = data.results[i];
-        chatMessages.push({
-          type: 'expert',
-          expert: { id: result.role, icon: result.emoji, color: '', name: result.role },
-          text: result.content,
-          time: new Date()
-        });
-        renderChatMessages();
-      }
-
-      // Final system message
-      await delay(800);
-      addSystemMessage('\u2705 8 \u4f4d\u4e13\u5bb6\u5df2\u5b8c\u6210\u5206\u6790\uff0c\u4f60\u53ef\u4ee5\u7ee7\u7eed\u63d0\u95ee\u6216\u5f00\u59cb\u5199\u4f5c');
-    }
-  } catch (err) {
-    // Remove loading message on error
-    const loadingIdx = chatMessages.findIndex(m => m.type === 'system' && m.text.includes('\u23f3'));
-    if (loadingIdx !== -1) chatMessages.splice(loadingIdx, 1);
-    renderChatMessages();
-
-    addSystemMessage('\u274c \u540e\u7aef\u8fde\u63a5\u5931\u8d25\uff0c\u8bf7\u786e\u8ba4\u670d\u52a1\u5df2\u542f\u52a8\uff08localhost:3001\uff09');
-    showNotification('\u540e\u7aef\u8fde\u63a5\u5931\u8d25', 'warning');
-  }
-}
-
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// ===== Submit Creative Idea - Calls real backend API =====
+// ===== Submit Creative Idea =====
 function submitIdea() {
   const input = document.getElementById('creativeInput');
   const text = input.value.trim();
-  if (!text) { showNotification('\u8bf7\u5148\u8f93\u5165\u4f60\u7684\u521b\u4f5c\u60f3\u6cd5', 'warning'); return; }
+  if (!text) { showNotification('请先输入你的创作想法', 'warning'); return; }
   
   if (!currentSession) createNewSession();
-
   openChatPanel();
   
-  // Add user message
   chatMessages.push({ type: 'user', text, time: new Date() });
   renderChatMessages();
 
-  // Call real backend API
-  callRoundtableAPI(text);
-
-  showNotification('\u5df2\u63d0\u4ea4\u521b\u4f5c\u60f3\u6cd5\uff0c\u4e13\u5bb6\u56e2\u961f\u6b63\u5728\u5206\u6790...', 'success');
+  callRoundtableAI(text);
+  showNotification('已提交创作想法，专家团队正在分析...', 'success');
 }
 
-// ===== Theme Toggle - P1 FIX: now actually works =====
+// ===== Theme Toggle =====
 function toggleTheme() {
   const btn = document.getElementById('btnTheme');
   document.body.classList.toggle('light-theme');
-  btn.innerHTML = document.body.classList.contains('light-theme') ? '&#9728;' : '&#127769;';
+  btn.innerHTML = document.body.classList.contains('light-theme') ? '☀' : '🌙';
 }
 
 // ===== Notifications =====

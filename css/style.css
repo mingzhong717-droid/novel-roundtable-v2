@@ -418,6 +418,23 @@ body {
 .modal-body .modal-deliverable { padding: 6px 14px; background: rgba(0, 206, 201, 0.1); border-radius: 8px; font-size: 13px; color: var(--accent); }
 .modal-footer { padding: 20px 32px 32px; display: flex; gap: 12px; }
 
+/* ===== Settings Modal ===== */
+.settings-modal { max-width: 420px; }
+.settings-form { display: flex; flex-direction: column; gap: 14px; }
+.settings-form label { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.settings-form select,
+.settings-form input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg-dark); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-primary);
+  font-size: 14px; outline: none; transition: var(--transition);
+}
+.settings-form select:focus,
+.settings-form input:focus { border-color: var(--primary); }
+.settings-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.btn-settings { background: rgba(108, 92, 231, 0.15); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: var(--transition); }
+.btn-settings:hover { background: var(--primary); color: #fff; }
+
 /* ===== Chat Panel ===== */
 .chat-panel {
   position: fixed; right: -480px; top: 0;

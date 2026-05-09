@@ -39,7 +39,7 @@
         <div class="top-bar-title">&#23567;&#35828;&#21019;&#20316;&#22278;&#26700;&#20250;</div>
         <div class="top-bar-actions">
           <button id="btnExpertInfo">&#19987;&#23478;&#35828;&#26126;</button>
-          <button id="btnFeedback">&#21453;&#39304;</button>
+          <button id="btnSettings" class="btn-settings">&#9881; &#35774;&#32622;</button>
           <button id="btnTheme" class="btn-theme">&#127769;</button>
         </div>
       </div>
@@ -193,6 +193,31 @@
       <div class="modal-footer">
         <button class="btn-entry primary" id="modalInvite">&#35753; TA &#21152;&#20837;&#22278;&#26700;&#20250;</button>
         <button class="btn-entry secondary" id="modalCancel">&#20851;&#38381;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal settings-modal" id="settingsModal">
+      <button class="modal-close" id="settingsClose">&times;</button>
+      <div class="modal-header"><h2>&#9881; API &#35774;&#32622;</h2></div>
+      <div class="modal-body">
+        <div class="settings-form">
+          <label for="platformSelect">AI &#24179;&#21488;</label>
+          <select id="platformSelect">
+            <option value="deepseek">DeepSeek</option>
+            <option value="qwen">&#36890;&#20041;&#21315;&#38382;</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <label for="apiKeyInput">API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="&#35831;&#36755;&#20837;&#20320;&#30340; API Key" />
+          <p class="settings-hint">&#20320;&#30340; Key &#20165;&#23384;&#20648;&#22312;&#26412;&#22320;&#27983;&#35272;&#22120;&#65292;&#19981;&#20250;&#19978;&#20256;&#21040;&#20219;&#20309;&#26381;&#21153;&#22120;&#12290;</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-entry primary" id="btnSaveSettings">&#20445;&#23384;&#35774;&#32622;</button>
+        <button class="btn-entry secondary" id="btnCancelSettings">&#21462;&#28040;</button>
       </div>
     </div>
   </div>
