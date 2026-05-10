@@ -631,6 +631,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .btn-cancel-roundtable{padding:4px 12px;border-radius:14px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--transition);border:1px solid rgba(225,112,85,.4);background:rgba(225,112,85,.1);color:#e17055;margin-left:8px;white-space:nowrap}
 .btn-cancel-roundtable:hover{background:rgba(225,112,85,.2);border-color:#e17055}
 
+/* ===== Material Card Interaction (Bug5 fix) ===== */
+.mat-clickable{transition:var(--transition)}
+.mat-clickable:hover{border-color:var(--primary-light);box-shadow:var(--shadow-hover);transform:translateY(-2px)}
+.mat-clickable.mat-expanded{border-color:var(--primary);box-shadow:var(--glow-primary)}
+.mat-action-hint{font-size:11px;color:var(--primary-light);margin-top:10px;opacity:.7;text-align:right}
+.mat-clickable:hover .mat-action-hint{opacity:1}
+.mat-action-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);animation:fadeInUp .2s ease}
+.map-title{font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.map-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.map-tag-btn{padding:4px 12px;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:rgba(139,124,246,.08);color:var(--text-secondary);transition:var(--transition)}
+.map-tag-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.map-actions{display:flex;gap:8px;flex-wrap:wrap}
+.map-btn-all,.map-btn-prompt{padding:6px 14px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;border:1px solid var(--border);transition:var(--transition)}
+.map-btn-all{background:rgba(139,124,246,.1);color:var(--primary-light)}
+.map-btn-all:hover{background:rgba(139,124,246,.2);border-color:var(--primary)}
+.map-btn-prompt{background:rgba(0,210,211,.08);color:var(--accent)}
+.map-btn-prompt:hover{background:rgba(0,210,211,.18);border-color:var(--accent)}
+
 /* ===== Material Card Extras ===== */
 .material-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
 .material-card-title{font-size:var(--text-base);font-weight:600;color:var(--text-primary)}

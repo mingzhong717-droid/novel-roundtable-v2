@@ -906,9 +906,101 @@ function initMaterials() {
 function renderMaterialGrid(cat) {
   const grid = document.getElementById('materialGrid');
   if (!grid || !MATERIALS[cat]) return;
-  grid.innerHTML = MATERIALS[cat].items.map(item => `
-    <div class="material-card"><h4>${item.icon} ${item.title} <span class="mat-count">${item.count}</span></h4><p>${item.desc}</p><div class="mat-items">${item.tags.map(t => '<span class="mat-item">' + t + '</span>').join('')}</div></div>
+  grid.innerHTML = MATERIALS[cat].items.map((item, idx) => `
+    <div class="material-card mat-clickable" data-cat="${cat}" data-idx="${idx}" style="cursor:pointer" title="点击查看操作">
+      <h4>${item.icon} ${item.title} <span class="mat-count">${item.count}</span></h4>
+      <p>${item.desc}</p>
+      <div class="mat-items">${item.tags.map(t => '<span class="mat-item">' + t + '</span>').join('')}</div>
+      <div class="mat-action-hint">点击使用 →</div>
+    </div>
   `).join('');
+
+  // Bug5 fix: 绑定卡片点击事件
+  grid.querySelectorAll('.mat-clickable').forEach(card => {
+    card.addEventListener('click', function(e) {
+      // 如果点击的是标签本身，直接插入该标签
+      const tagEl = e.target.closest('.mat-item');
+      if (tagEl) {
+        insertMaterialToInput(tagEl.textContent);
+        return;
+      }
+      const c = this.dataset.cat;
+      const i = parseInt(this.dataset.idx);
+      openMaterialActionPanel(c, i, this);
+    });
+  });
+}
+
+// 打开素材操作面板（内联展开，不用弹窗）
+function openMaterialActionPanel(cat, idx, cardEl) {
+  const item = MATERIALS[cat]?.items[idx];
+  if (!item) return;
+
+  // 如果已经展开，则收起
+  const existing = cardEl.querySelector('.mat-action-panel');
+  if (existing) { existing.remove(); cardEl.classList.remove('mat-expanded'); return; }
+
+  // 收起其他已展开的面板
+  document.querySelectorAll('.mat-action-panel').forEach(p => {
+    p.closest('.mat-clickable')?.classList.remove('mat-expanded');
+    p.remove();
+  });
+
+  cardEl.classList.add('mat-expanded');
+  const panel = document.createElement('div');
+  panel.className = 'mat-action-panel';
+  panel.innerHTML = `
+    <div class="map-title">选择要插入的素材标签：</div>
+    <div class="map-tags">${item.tags.map(t => '<button class="map-tag-btn" data-tag="' + escapeHtml(t) + '">' + escapeHtml(t) + '</button>').join('')}</div>
+    <div class="map-actions">
+      <button class="map-btn-all">📋 插入全部标签</button>
+      <button class="map-btn-prompt">✍ 用此素材开始讨论</button>
+    </div>
+  `;
+
+  // 单个标签插入
+  panel.querySelectorAll('.map-tag-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      insertMaterialToInput(this.dataset.tag);
+      cardEl.classList.remove('mat-expanded');
+      panel.remove();
+    });
+  });
+
+  // 插入全部标签
+  panel.querySelector('.map-btn-all').addEventListener('click', function(e) {
+    e.stopPropagation();
+    insertMaterialToInput(item.tags.join('、'));
+    cardEl.classList.remove('mat-expanded');
+    panel.remove();
+  });
+
+  // 用此素材开始讨论
+  panel.querySelector('.map-btn-prompt').addEventListener('click', function(e) {
+    e.stopPropagation();
+    const prompt = '我想写一个包含以下元素的故事：' + item.tags.join('、') + '\n\n素材来源：' + item.title + '（' + item.desc + '）\n\n请各位专家从商业价值、世界观、人物、剧情等角度给出评估和建议。';
+    const input = document.getElementById('creativeInput');
+    if (input) { input.value = prompt; input.focus(); input.dispatchEvent(new Event('input', { bubbles: true })); }
+    cardEl.classList.remove('mat-expanded');
+    panel.remove();
+    showNotification('已填入素材提示词，点击"开始圆桌讨论"', 'success');
+    // 滚动到输入框
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  cardEl.appendChild(panel);
+}
+
+// 将文本插入到创作输入框（追加到末尾）
+function insertMaterialToInput(text) {
+  const input = document.getElementById('creativeInput');
+  if (!input) return;
+  const cur = input.value;
+  input.value = cur ? cur + '\n' + text : text;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.focus();
+  showNotification('已插入：' + text.slice(0, 20) + (text.length > 20 ? '...' : ''), 'success');
 }
 
 // ===== Quick Templates =====
@@ -1798,6 +1890,9 @@ function restoreSession(id) {
   store.currentResults = { topic: entry.topic, historyId: entry.id, results, totalTime: entry.totalTime || '?', cost: '历史记录' };
   openChatPanel();
   renderChatMessages();
+  // Bug3 fix: 历史会话应从头阅读，滚到顶部而非底部
+  const chatContainer = document.getElementById('chatMessages');
+  if (chatContainer) chatContainer.scrollTop = 0;
 }
 
 // ===== 导出 Markdown =====
@@ -1878,6 +1973,29 @@ window.exportMarkdown = exportMarkdown;
 window.cancelRoundtable = cancelRoundtable;
 
 // ===== 功能工具实现（增强版） =====
+
+// Bug4 fix: 工具依赖内存状态，刷新后 store.currentResults 为空
+// 此函数在工具被调用时自动从最近一条历史记录恢复，无需用户重新讨论
+function ensureCurrentResults() {
+  if (store.currentResults && store.currentResults.results && store.currentResults.results.length) {
+    return true; // 内存中已有数据，直接使用
+  }
+  const hist = getHistory();
+  if (!hist.length) return false;
+  const entry = hist[0]; // 最近一条
+  if (!entry.results || !entry.results.length) return false;
+  // 复用 restoreSession 的转换逻辑
+  function toRenderResults(arr) {
+    return arr.map(r => {
+      const expert = EXPERTS.find(e => e.id === r.expertId) || { name: r.expertName, emoji: r.emoji, id: r.expertId };
+      if (r.error) return { expert, success: false, error: r.error };
+      return { expert, success: true, content: r.content, modelInfo: { name: r.model }, elapsed: r.duration, modelId: r.model };
+    });
+  }
+  const results = toRenderResults(entry.results.slice(0, 9));
+  store.currentResults = { topic: entry.topic, historyId: entry.id, results, totalTime: entry.totalTime || '?', cost: '历史记录' };
+  return true;
+}
 
 function openToolModal(title, bodyHtml, footerHtml) {
   const overlay = document.getElementById('toolModalOverlay');
@@ -2105,8 +2223,8 @@ function formatFileSize(bytes) {
 
 // ===== 工具2: 讨论思维导图（增强版） =====
 function toolMindmap() {
-  if (!store.currentResults || !store.currentResults.results) {
-    showNotification('请先完成一次圆桌讨论', 'warning');
+  if (!ensureCurrentResults()) {
+    showNotification('暂无讨论记录，请先完成一次圆桌讨论', 'warning');
     return;
   }
   const results = store.currentResults.results.filter(r => r.success);
@@ -2308,8 +2426,8 @@ function exportMindmapAs(format) {
 
 // ===== 工具3: 小说草稿下载（增强版） =====
 function toolDownload() {
-  if (!store.currentResults || !store.currentResults.results) {
-    showNotification('请先完成一次圆桌讨论', 'warning');
+  if (!ensureCurrentResults()) {
+    showNotification('暂无讨论记录，请先完成一次圆桌讨论', 'warning');
     return;
   }
   const results = store.currentResults.results;
@@ -2528,8 +2646,8 @@ function executeDownload(format, topic, results, includeMeta, template) {
 
 // ===== 工具4: 智能分析（增强版） =====
 function toolAnalyze() {
-  if (!store.currentResults || !store.currentResults.results) {
-    showNotification('请先完成一次圆桌讨论', 'warning');
+  if (!ensureCurrentResults()) {
+    showNotification('暂无讨论记录，请先完成一次圆桌讨论', 'warning');
     return;
   }
   const results = store.currentResults.results.filter(r => r.success);
