@@ -1176,13 +1176,20 @@ function closeModal() { document.getElementById('modalOverlay')?.classList.remov
 
 // ===== Sidebar =====
 function initSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const toggle = document.getElementById('sidebarToggle');
-  if (!sidebar || !toggle) return;
-  toggle.addEventListener('click', function() {
-    sidebar.classList.toggle('collapsed');
-    this.querySelector('.toggle-icon').textContent = sidebar.classList.contains('collapsed') ? '☰' : '✕';
-  });
+const sidebar = document.getElementById('sidebar');
+const toggle = document.getElementById('sidebarToggle');
+if (!sidebar || !toggle) return;
+toggle.addEventListener('click', function() {
+sidebar.classList.toggle('collapsed');
+const isCollapsed = sidebar.classList.contains('collapsed');
+this.querySelector('.toggle-icon').textContent = isCollapsed ? '☰' : '✕';
+// Sync chat panel left offset with sidebar state
+const chatPanel = document.getElementById('chatPanel');
+if (chatPanel) {
+  if (isCollapsed) chatPanel.classList.remove('sidebar-expanded');
+  else chatPanel.classList.add('sidebar-expanded');
+}
+});
 }
 
 // ===== Sessions =====
