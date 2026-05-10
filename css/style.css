@@ -438,6 +438,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .modal-body .modal-deliverable{padding:6px 14px;background:rgba(108,92,231,.08);border-radius:var(--radius-sm);font-size:var(--text-sm);color:var(--text-muted)}
 .modal-footer{padding:20px 32px 32px;display:flex;gap:12px}
 
+/* ===== Expert Detail Modal (Mode B) ===== */
+.modal-overlay.expert-detail-mode .modal{max-width:760px}
+.expert-detail-layout{display:flex;gap:28px}
+.expert-detail-left{flex:1;min-width:0}
+.expert-detail-right{flex:1;min-width:0}
+.detail-section{margin-bottom:20px}
+.detail-section h4{font-size:var(--text-sm);font-weight:600;color:var(--text-muted);margin-bottom:8px;margin-top:0}
+.detail-section p{font-size:var(--text-sm);color:var(--text-secondary);line-height:1.7}
+.detail-tags{display:flex;flex-wrap:wrap;gap:6px}
+.detail-list{list-style:none;padding:0;margin:0}
+.detail-list li{font-size:var(--text-sm);color:var(--text-secondary);line-height:1.8;padding-left:16px;position:relative}
+.detail-list li::before{content:'•';position:absolute;left:0;color:var(--primary-light);font-weight:700}
+.suggested-prompt{padding:10px 14px;background:rgba(108,92,231,.06);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:var(--text-sm);color:var(--text-secondary);line-height:1.7;font-style:italic}
+@media(max-width:600px){.expert-detail-layout{flex-direction:column;gap:16px}}
+
 /* ===== Settings Modal ===== */
 .settings-modal{max-width:640px;max-height:85vh}
 .settings-modal .modal-body{overflow-y:auto;max-height:calc(85vh - 180px)}

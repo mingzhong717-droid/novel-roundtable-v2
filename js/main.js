@@ -722,19 +722,109 @@ async function startRoundtable(topic) {
 // ===== Expert Display Data (for homepage cards) =====
 const EXPERT_CARDS = {
   core: [
-    { id: 'chief-editor', icon: '📋', color: '', name: '总编辑', subtitle: '商业价值 · 市场定位', scenario: '评估题材热度、商业潜力和开篇吸引力', skills: ['市场分析', '商业判断', '读者画像', '黄金三章'] },
-    { id: 'world-builder', icon: '🌍', color: 'teal', name: '世界观架构师', subtitle: '逻辑自洽 · 设定审查', scenario: '审查世界观逻辑、经济系统和时代背景', skills: ['设定审查', '逻辑验证', '历史考据', '经济系统'] },
-    { id: 'character-designer', icon: '🎭', color: 'pink', name: '人物塑造师', subtitle: '角色深度 · 成长弧线', scenario: '评估人物立体感、动机合理性和关系张力', skills: ['角色设计', '心理分析', '成长弧线', '关系网络'] },
-    { id: 'plot-architect', icon: '📖', color: '', name: '剧情编排师', subtitle: '节奏设计 · 冲突层次', scenario: '评估故事节奏、悬念伏笔和高潮设置', skills: ['结构设计', '节奏把控', '悬念布局', '转折设计'] }
+    {
+      id: 'chief-editor', icon: '📋', color: '', name: '总编辑',
+      subtitle: '商业价值 · 市场定位',
+      scenario: '评估题材热度、商业潜力和开篇吸引力',
+      skills: ['市场分析', '商业判断', '读者画像', '黄金三章'],
+      stage: '任意阶段',
+      focus: ['题材热度', '变现潜力', '开篇吸引力'],
+      suggestedPrompt: '请从总编辑视角出发，评估这个题材的商业潜力和目标读者。',
+      responsibilities: ['判断题材热度与市场差异化', '评估付费点设置和IP改编可能', '指出致命的商业硬伤', '给出可执行的商业方向建议'],
+      deliverables: ['市场定位报告', '商业评级(S/A/B/C/D)', '可执行建议清单']
+    },
+    {
+      id: 'world-builder', icon: '🌍', color: 'teal', name: '世界观架构师',
+      subtitle: '逻辑自洽 · 设定审查',
+      scenario: '审查世界观逻辑、经济系统和时代背景',
+      skills: ['设定审查', '逻辑验证', '历史考据', '经济系统'],
+      stage: '大纲阶段',
+      focus: ['时代背景', '经济系统', '社会结构'],
+      suggestedPrompt: '请审查我的世界观设定，找出逻辑自洽问题。',
+      responsibilities: ['核查时代背景准确性', '验证经济和权力系统的合理性', '发现设定内部矛盾', '给出具体修正方案'],
+      deliverables: ['逐项核查表', '漏洞清单', '修正建议']
+    },
+    {
+      id: 'character-designer', icon: '🎭', color: 'pink', name: '人物塑造师',
+      subtitle: '角色深度 · 成长弧线',
+      scenario: '评估人物立体感、动机合理性和关系张力',
+      skills: ['角色设计', '心理分析', '成长弧线', '关系网络'],
+      stage: '人物设计阶段',
+      focus: ['性格立体度', '动机合理性', '配角独立性'],
+      suggestedPrompt: '请分析我的主角和配角，找出扁平化问题。',
+      responsibilities: ['评估主角性格立体度和动机合理性', '检查配角是否沦为工具人', '分析人物成长弧线清晰度', '给出增加角色深度的方法'],
+      deliverables: ['人物评分表', '扁平化警告', '弧线优化建议']
+    },
+    {
+      id: 'plot-architect', icon: '📖', color: '', name: '剧情编排师',
+      subtitle: '节奏设计 · 冲突层次',
+      scenario: '评估故事节奏、悬念伏笔和高潮设置',
+      skills: ['结构设计', '节奏把控', '悬念布局', '转折设计'],
+      stage: '大纲/正文阶段',
+      focus: ['爽点密度', '冲突层次', '悬念伏笔'],
+      suggestedPrompt: '请分析我的故事结构，画出情绪曲线，找出节奏问题。',
+      responsibilities: ['绘制情绪曲线图', '分析爽点密度和位置', '检查冲突层次和悬念设置', '给出最值得改的节奏调整'],
+      deliverables: ['情绪曲线图', '爽点分析', '结构优化方案']
+    }
   ],
   genre: [
-    { id: 'dialogue-expert', icon: '💬', color: 'pink', name: '对白专家', subtitle: '台词质量 · 潜台词', scenario: '评估对白自然度、角色语言特征和潜台词', skills: ['对白设计', '语言特征', '潜台词', '节奏感'] },
-    { id: 'style-polisher', icon: '✨', color: '', name: '文笔润色师', subtitle: '文字美学 · 风格辨识', scenario: '评估文笔质量、修辞新颖度和情感表达', skills: ['风格定调', '修辞打磨', '氛围营造', '五感描写'] }
+    {
+      id: 'dialogue-expert', icon: '💬', color: 'pink', name: '对白专家',
+      subtitle: '台词质量 · 潜台词',
+      scenario: '评估对白自然度、角色语言特征和潜台词',
+      skills: ['对白设计', '语言特征', '潜台词', '节奏感'],
+      stage: '正文阶段',
+      focus: ['角色辨识度', '信息密度', '潜台词运用'],
+      suggestedPrompt: '请评估这段对白的质量，找出不自然的台词并示范改写。',
+      responsibilities: ['检查不同角色说话能否区分', '找出信息倾倒和空洞对话', '示范改写问题台词', '推荐符合角色的金句'],
+      deliverables: ['对白评级', '问题台词改写示范', '金句推荐']
+    },
+    {
+      id: 'style-polisher', icon: '✨', color: '', name: '文笔润色师',
+      subtitle: '文字美学 · 风格辨识',
+      scenario: '评估文笔质量、修辞新颖度和情感表达',
+      skills: ['风格定调', '修辞打磨', '氛围营造', '五感描写'],
+      stage: '正文阶段',
+      focus: ['风格辨识度', '描写生动度', 'AI味浓度'],
+      suggestedPrompt: '请评估这段文字的文笔质量，找出写得好和需要改进的地方。',
+      responsibilities: ['评估文笔风格统一性和辨识度', '找出生动描写和需改进的段落', '示范改写问题文字', '给出风格定位建议'],
+      deliverables: ['文笔评级', '段落改写示范', '风格定位建议']
+    }
   ],
   support: [
-    { id: 'continuity-checker', icon: '🔍', color: 'teal', name: '连续性审查员', subtitle: 'Bug检测 · 逻辑校验', scenario: '发现时间线矛盾、设定冲突和逻辑漏洞', skills: ['逻辑审查', '时间线', '设定一致', 'Bug分级'] },
-    { id: 'toxic-reader', icon: '🔥', color: 'pink', name: '毒舌读者', subtitle: '读者视角 · 犀利吐槽', scenario: '代表最挑剔读者，给出追读意愿评分', skills: ['读者视角', '套路识别', '爽点判断', '弃文预警'] },
-    { id: 'ai-detector', icon: '🔬', color: 'teal', name: 'AI味猎手', subtitle: 'AI味检测 · 人味改写', scenario: '检测文字中的AI生成痕迹，帮助作者写出更有"人味"的内容', skills: ['AI味检测', '语言自然度', '人物情感真实性', '叙事节奏'] }
+    {
+      id: 'continuity-checker', icon: '🔍', color: 'teal', name: '连续性审查员',
+      subtitle: 'Bug检测 · 逻辑校验',
+      scenario: '发现时间线矛盾、设定冲突和逻辑漏洞',
+      skills: ['逻辑审查', '时间线', '设定一致', 'Bug分级'],
+      stage: '任意阶段',
+      focus: ['时间线矛盾', '设定前后不一', '金手指合理性'],
+      suggestedPrompt: '请扫描这段内容，找出所有逻辑漏洞和前后矛盾。',
+      responsibilities: ['扫描时间线、空间、人物设定矛盾', '按致命/明显/小瑕疵分级', '给出每个Bug的修复方案', '无问题时明确告知设定自洽'],
+      deliverables: ['Bug扫描报告', '分级清单', '修复建议']
+    },
+    {
+      id: 'toxic-reader', icon: '🔥', color: 'pink', name: '毒舌读者',
+      subtitle: '读者视角 · 犀利吐槽',
+      scenario: '代表最挑剔读者，给出追读意愿评分',
+      skills: ['读者视角', '套路识别', '爽点判断', '弃文预警'],
+      stage: '任意阶段',
+      focus: ['套路感', '爽感', '追读意愿'],
+      suggestedPrompt: '请用最挑剔读者的视角评价这个故事，直接说会不会追。',
+      responsibilities: ['给出第一印象和追读意愿', '识别套路感和爽感', '指出最让人想弃文的地方', '和同类热门作品对比'],
+      deliverables: ['追读意愿评分', '弃文风险点', '毒舌一句话总结']
+    },
+    {
+      id: 'ai-detector', icon: '🔬', color: 'teal', name: 'AI味猎手',
+      subtitle: 'AI痕迹检测 · 人味诊断',
+      scenario: '找出文字中的AI生成痕迹，帮作者写出人味',
+      skills: ['AI味检测', '语言自然度', '人物情感真实性', '叙事节奏'],
+      stage: '正文阶段',
+      focus: ['模板化表达', '情感平板化', '节奏机械感'],
+      suggestedPrompt: '请检测这段文字的AI味，找出最明显的痕迹并示范人味改写。',
+      responsibilities: ['检测6个AI味维度', '引用原文标注AI味特征', '示范人味改写', '给出去AI味优先级建议'],
+      deliverables: ['AI味指数(0-10)', 'AI味特征清单', '人味改写示范']
+    }
   ]
 };
 
@@ -757,6 +847,15 @@ function renderExpertGroup(group, container) {
       <div class="expert-skills">${expert.skills.map(s => '<span class="skill-tag">' + s + '</span>').join('')}</div>
     </div>
   `).join('');
+  // Add click event for each expert card → open detail modal
+  container.querySelectorAll('.expert-card').forEach(card => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', (e) => {
+      // Don't open detail if clicking checkbox area
+      if (e.target.closest('.expert-checkbox') || e.target.closest('input[type="checkbox"]')) return;
+      openExpertDetailModal(card.dataset.expert);
+    });
+  });
 }
 
 // ===== Material Library =====
@@ -1301,7 +1400,105 @@ function openExpertInfoModal() {
   document.getElementById('modalInvite').style.display = 'none';
   modal.classList.add('active');
 }
-function closeModal() { document.getElementById('modalOverlay')?.classList.remove('active'); document.getElementById('modalInvite').style.display = ''; }
+function closeModal() {
+  const modal = document.getElementById('modalOverlay');
+  modal?.classList.remove('active');
+  modal?.classList.remove('expert-detail-mode');
+  document.getElementById('modalInvite').style.display = '';
+  document.getElementById('modalCancel').style.display = '';
+}
+
+// ===== Expert Detail Modal (Mode B: single expert) =====
+function findExpertCard(expertId) {
+  for (const group of Object.values(EXPERT_CARDS)) {
+    const found = group.find(e => e.id === expertId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function openExpertDetailModal(expertId) {
+  const expert = findExpertCard(expertId);
+  if (!expert) return;
+  const modal = document.getElementById('modalOverlay');
+  const header = document.getElementById('modalHeader');
+  const body = document.getElementById('modalBody');
+
+  modal.classList.add('expert-detail-mode');
+
+  header.innerHTML = `
+    <div class="modal-expert-top">
+      <div class="modal-avatar expert-avatar ${expert.color}" style="width:64px;height:64px;border-radius:16px;font-size:28px;">${expert.icon}</div>
+      <div class="modal-title">
+        <h2>${expert.name}</h2>
+        <p>${expert.subtitle}</p>
+      </div>
+    </div>`;
+
+  body.innerHTML = `
+    <div class="expert-detail-layout">
+      <div class="expert-detail-left">
+        <div class="detail-section">
+          <h4>适用阶段</h4>
+          <p>${expert.stage}</p>
+        </div>
+        <div class="detail-section">
+          <h4>核心关注</h4>
+          <div class="detail-tags">${expert.focus.map(f => '<span class="skill-tag">' + f + '</span>').join('')}</div>
+        </div>
+        <div class="detail-section">
+          <h4>技能标签</h4>
+          <div class="detail-tags">${expert.skills.map(s => '<span class="skill-tag">' + s + '</span>').join('')}</div>
+        </div>
+        <div class="detail-section">
+          <h4>推荐提示词</h4>
+          <p class="suggested-prompt">${expert.suggestedPrompt}</p>
+        </div>
+      </div>
+      <div class="expert-detail-right">
+        <div class="detail-section">
+          <h4>职责范围</h4>
+          <ul class="detail-list">${expert.responsibilities.map(r => '<li>' + r + '</li>').join('')}</ul>
+        </div>
+        <div class="detail-section">
+          <h4>交付成果</h4>
+          <ul class="detail-list">${expert.deliverables.map(d => '<li>' + d + '</li>').join('')}</ul>
+        </div>
+      </div>
+    </div>`;
+
+  // Configure footer buttons
+  const inviteBtn = document.getElementById('modalInvite');
+  const cancelBtn = document.getElementById('modalCancel');
+  inviteBtn.style.display = '';
+  inviteBtn.textContent = '选择该专家';
+  inviteBtn.onclick = () => selectExpertAndClose(expertId);
+  cancelBtn.style.display = '';
+  cancelBtn.textContent = '返回';
+  cancelBtn.onclick = () => closeModal();
+
+  modal.classList.add('active');
+}
+
+function selectExpertAndClose(expertId) {
+  // Find the checkbox for this expert and toggle it
+  const checkbox = document.querySelector(`.expert-card[data-expert="${expertId}"] input[type="checkbox"]`);
+  if (checkbox && !checkbox.checked) {
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  closeModal();
+  // Scroll to the input area
+  const inputArea = document.getElementById('novelContent') || document.getElementById('textInput');
+  if (inputArea) {
+    inputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    inputArea.focus();
+  }
+}
+
+// Expose to window for potential onclick usage
+window.openExpertDetailModal = openExpertDetailModal;
+window.selectExpertAndClose = selectExpertAndClose;
 
 // ===== Sidebar =====
 function initSidebar() {
