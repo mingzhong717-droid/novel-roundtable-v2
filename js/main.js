@@ -1024,7 +1024,7 @@ function initQuickTemplates() {
     if (!tpl) return;
     // 自动填充输入框
     const input = document.getElementById('creativeInput');
-    if (input) { input.value = tpl.prompt; input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    if (input) { input.value = tpl.prompt; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
     // 高亮当前卡片
     container.querySelectorAll('.quick-tpl-card').forEach(c => c.classList.remove('active'));
     card.classList.add('active');
