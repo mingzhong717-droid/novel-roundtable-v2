@@ -651,8 +651,9 @@ function renderProgressPanel(msg) {
 function renderResultCards(msg) {
   const results = msg.results;
   const successCount = results.filter(r => r.success).length;
+  const titleLabel = msg.roundLabel ? `<span class="round-label">${msg.roundLabel}</span>` : '';
   let html = `<div class="chat-msg results-msg"><div class="msg-body">
-    <div class="results-header"><h3>📋 圆桌讨论完成</h3><span class="results-meta">${successCount}/${results.length} 完成 · 耗时 ${msg.totalTime}s · 费用 ${msg.cost}</span><button class="btn-export" onclick="exportMarkdown()" title="导出 Markdown">📥 导出</button></div>
+    <div class="results-header"><h3>📋 圆桌讨论完成${titleLabel}</h3><span class="results-meta">${successCount}/${results.length} 完成 · 耗时 ${msg.totalTime}s · 费用 ${msg.cost}</span><button class="btn-export" onclick="exportMarkdown()" title="导出 Markdown">📥 导出</button></div>
     <div class="result-cards">`;
   results.forEach((r, i) => {
     if (!r.expert) return;
@@ -836,12 +837,22 @@ function initExperts() {
   renderExpertGroup('core', document.getElementById('coreGrid'));
   renderExpertGroup('genre', document.getElementById('genreGrid'));
   renderExpertGroup('support', document.getElementById('supportGrid'));
+  // Delegated click handler — bound once on the experts section, works even after re-render
+  const expertSection = document.getElementById('expertSection');
+  if (expertSection && !expertSection._expertClickBound) {
+    expertSection._expertClickBound = true;
+    expertSection.addEventListener('click', function(e) {
+      if (e.target.closest('.expert-checkbox') || e.target.closest('input[type="checkbox"]')) return;
+      const card = e.target.closest('.expert-card[data-expert]');
+      if (card) openExpertDetailModal(card.dataset.expert);
+    });
+  }
 }
 
 function renderExpertGroup(group, container) {
   if (!container || !EXPERT_CARDS[group]) return;
   container.innerHTML = EXPERT_CARDS[group].map(expert => `
-    <div class="expert-card" data-expert="${expert.id}">
+    <div class="expert-card" data-expert="${expert.id}" style="cursor:pointer">
       <div class="expert-card-top">
         <div class="expert-avatar ${expert.color}">${expert.icon}</div>
         <div class="expert-meta"><h4>${expert.name}</h4><p>${expert.subtitle}</p></div>
@@ -850,15 +861,7 @@ function renderExpertGroup(group, container) {
       <div class="expert-skills">${expert.skills.map(s => '<span class="skill-tag">' + s + '</span>').join('')}</div>
     </div>
   `).join('');
-  // Add click event for each expert card → open detail modal
-  container.querySelectorAll('.expert-card').forEach(card => {
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', (e) => {
-      // Don't open detail if clicking checkbox area
-      if (e.target.closest('.expert-checkbox') || e.target.closest('input[type="checkbox"]')) return;
-      openExpertDetailModal(card.dataset.expert);
-    });
-  });
+  // Click events are handled via delegated listener set up in initExperts()
 }
 
 // ===== Material Library =====
@@ -1097,6 +1100,10 @@ function initEventListeners() {
   // Submit idea
   document.getElementById('btnSubmitIdea')?.addEventListener('click', submitIdea);
   document.getElementById('creativeInput')?.addEventListener('keydown', function(e) { if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); submitIdea(); } });
+  document.getElementById('creativeInput')?.addEventListener('input', function() {
+    const el = document.getElementById('creativeCharCount');
+    if (el) el.textContent = this.value.length;
+  });
 
   // Chat
   document.getElementById('chatClose')?.addEventListener('click', closeChatPanel);
@@ -1111,10 +1118,34 @@ function initEventListeners() {
   // Modal
   document.getElementById('modalClose')?.addEventListener('click', closeModal);
   document.getElementById('modalCancel')?.addEventListener('click', closeModal);
-  document.getElementById('modalOverlay')?.addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+  document.getElementById('modalOverlay')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+      // Check if the click coordinates land on an expert card behind the overlay
+      this.style.pointerEvents = 'none';
+      const behind = document.elementFromPoint(e.clientX, e.clientY);
+      this.style.pointerEvents = '';
+      const card = behind?.closest('.expert-card');
+      if (card && card.dataset.expert) {
+        closeModal();
+        openExpertDetailModal(card.dataset.expert);
+      } else {
+        closeModal();
+      }
+    }
+  });
 
-  // Mobile menu
-  document.getElementById('mobileMenuBtn')?.addEventListener('click', function() { this.classList.toggle('active'); document.getElementById('sidebar')?.classList.toggle('open'); });
+// Mobile menu
+(function() {
+  const menuBtn = document.getElementById('mobileMenuBtn');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  function openSidebar() { menuBtn?.classList.add('active'); sidebar?.classList.add('open'); overlay?.classList.add('active'); }
+  function closeSidebar() { menuBtn?.classList.remove('active'); sidebar?.classList.remove('open'); overlay?.classList.remove('active'); }
+  menuBtn?.addEventListener('click', function() { sidebar?.classList.contains('open') ? closeSidebar() : openSidebar(); });
+  overlay?.addEventListener('click', closeSidebar);
+  // Close sidebar when a nav item is clicked on mobile
+  sidebar?.addEventListener('click', function(e) { if (window.innerWidth <= 768 && e.target.closest('.nav-item')) closeSidebar(); });
+})();
 
   // Material search (debounced)
   document.getElementById('materialSearch')?.addEventListener('input', debounce(function(e) { filterMaterials(e.target.value.trim()); }, 200));
@@ -1296,7 +1327,9 @@ async function followUpRoundtable(question) {
     // 更新 UI
     store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
     const cost = formatCost(estimateCost(cfg));
-    store.chatMessages.push({ type: 'results', results, totalTime, cost });
+    const followupRound = store.chatMessages.filter(m => m.type === 'results').length + 1;
+    const roundLabel = `· 第 ${followupRound} 轮追问`;
+    store.chatMessages.push({ type: 'results', results, totalTime, cost, roundLabel });
     store.currentResults = { ...store.currentResults, results, totalTime, cost };
     renderChatMessages();
     renderSessionList();
@@ -1371,7 +1404,8 @@ async function followUpSingleExpert(question, expertId) {
 
       // 更新 UI
       store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
-      store.chatMessages.push({ type: 'results', results: [result], totalTime: elapsed, cost: formatCost(estimateCost(cfg) / 8) });
+      const singleRound = store.chatMessages.filter(m => m.type === 'results').length + 1;
+      store.chatMessages.push({ type: 'results', results: [result], totalTime: elapsed, cost: formatCost(estimateCost(cfg) / 8), roundLabel: `· 第 ${singleRound} 轮追问（${expert.name}）` });
       store.currentResults = { ...store.currentResults, results: [result], totalTime: elapsed };
       showNotification(expert.emoji + ' ' + expert.name + ' 回复完成', 'success');
     } catch (err) {

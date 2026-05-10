@@ -17,11 +17,12 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="NovelRoundTable - AI 小说创作协作平台">
   <meta name="twitter:description" content="9 位 AI 创作专家并行评估你的小说方案，全方位助力创作。">
-  <link rel="stylesheet" href="css/style.css?v=2.7.0">
+  <link rel="stylesheet" href="css/style.css?v=2.8.0">
 </head>
 <body>
   <canvas id="particlesCanvas"></canvas>
   <button class="mobile-menu-btn" id="mobileMenuBtn"><span></span><span></span><span></span></button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <div class="app-container">
     <!-- Sidebar (collapsed by default) -->
@@ -71,6 +72,7 @@
           </div>
           <div class="input-area">
             <textarea id="creativeInput" placeholder="描述你的小说方案，如题材、主角设定、核心冲突..."></textarea>
+            <div class="input-char-count"><span id="creativeCharCount">0</span> 字</div>
             <div class="quick-templates" id="quickTemplates"></div>
             <div class="input-actions">
               <div class="input-tips">
