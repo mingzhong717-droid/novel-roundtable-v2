@@ -615,7 +615,7 @@ function renderResultCards(msg) {
   const results = msg.results;
   const successCount = results.filter(r => r.success).length;
   let html = `<div class="chat-msg results-msg"><div class="msg-body">
-    <div class="results-header"><h3>📋 圆桌讨论完成</h3><span class="results-meta">${successCount}/8 完成 · 耗时 ${msg.totalTime}s · 费用 ${msg.cost}</span><button class="btn-export" onclick="exportMarkdown()" title="导出 Markdown">📥 导出</button></div>
+    <div class="results-header"><h3>📋 圆桌讨论完成</h3><span class="results-meta">${successCount}/${results.length} 完成 · 耗时 ${msg.totalTime}s · 费用 ${msg.cost}</span><button class="btn-export" onclick="exportMarkdown()" title="导出 Markdown">📥 导出</button></div>
     <div class="result-cards">`;
   results.forEach((r, i) => {
     if (!r.expert) return;
@@ -1458,8 +1458,9 @@ function exportHistoryEntry(id) {
   downloadMarkdown(md, filename);
 }
 
-// 暴露 exportMarkdown 到全局（因为 onclick 在 IIFE 外）
+// 暴露 exportMarkdown / cancelRoundtable 到全局（因为 onclick 在 IIFE 外）
 window.exportMarkdown = exportMarkdown;
+window.cancelRoundtable = cancelRoundtable;
 
 // ===== 功能工具实现（增强版） =====
 
