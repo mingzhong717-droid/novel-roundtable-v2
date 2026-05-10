@@ -306,11 +306,38 @@ async function runRoundtable(topic, onProgress) {
       }
     });
 
-    const settled = await Promise.allSettled(promises);
+    // abort 时立即返回，不等待剩余请求完成
+    const abortPromise = new Promise(function(resolve) {
+      signal.addEventListener('abort', function() {
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        resolve({ __aborted: true, totalTime: totalTime });
+      }, { once: true });
+    });
+    // 如果进入时已经 aborted（极端情况），直接返回
+    if (signal.aborted) {
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      store.currentResults = { topic, totalTime, results: [], cancelled: true };
+      return store.currentResults;
+    }
+
+    const raceResult = await Promise.race([
+      Promise.allSettled(promises).then(function(settled) {
+        return { __aborted: false, settled: settled };
+      }),
+      abortPromise
+    ]);
+
+    if (raceResult.__aborted) {
+      console.log('[NRT] runRoundtable: abort detected via race, returning immediately');
+      store.currentResults = { topic, totalTime: raceResult.totalTime, results: [], cancelled: true };
+      return store.currentResults;
+    }
+
+    const settled = raceResult.settled;
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
 
-    // 如果已取消，返回取消标记，不保存历史
+    // 如果已取消（race 后的兜底检查），返回取消标记，不保存历史
     if (signal.aborted) {
       store.currentResults = { topic, totalTime, results, cancelled: true };
       return store.currentResults;
@@ -1113,11 +1140,39 @@ async function followUpRoundtable(question) {
       }
     });
 
-    const settled = await Promise.allSettled(promises);
+    // abort 时立即返回，不等待剩余请求
+    const abortPromise2 = new Promise(function(resolve) {
+      signal.addEventListener('abort', function() {
+        resolve({ __aborted: true });
+      }, { once: true });
+    });
+    if (signal.aborted) {
+      store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+      store.chatMessages.push({ type: 'system', text: '🚫 追问已取消' });
+      renderChatMessages();
+      return;
+    }
+
+    const raceResult2 = await Promise.race([
+      Promise.allSettled(promises).then(function(settled) {
+        return { __aborted: false, settled: settled };
+      }),
+      abortPromise2
+    ]);
+
+    if (raceResult2.__aborted) {
+      console.log('[NRT] followUpRoundtable: abort detected via race, returning immediately');
+      store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+      store.chatMessages.push({ type: 'system', text: '🚫 追问已取消' });
+      renderChatMessages();
+      return;
+    }
+
+    const settled = raceResult2.settled;
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
 
-    // 如果已取消，清理 UI 并返回
+    // 兜底检查
     if (signal.aborted) {
       store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
       store.chatMessages.push({ type: 'system', text: '🚫 追问已取消' });
