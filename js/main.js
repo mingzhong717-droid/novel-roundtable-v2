@@ -78,7 +78,7 @@ const PRESETS = {
   premium: { name: '👑 旗舰档', description: 'Claude混合，≈¥0.2/次', costPerRun: '≈¥0.2', config: { default: 'deepseek-v4-flash', overrides: { 'chief-editor': 'claude-sonnet-4.6', 'plot-architect': 'claude-sonnet-4.6', 'style-polisher': 'claude-sonnet-4.6', 'continuity-checker': 'deepseek-v4-pro', 'character-designer': 'longcat-medium', 'dialogue-expert': 'longcat-medium' } } }
 };
 
-// ===== 8 位 AI 专家 =====
+// ===== 9 位 AI 专家 =====
 const EXPERTS = [
   { id: 'chief-editor', name: '总编辑', emoji: '📋', temperature: 0.7, systemPrompt: '你是一位资深网文总编辑，拥有20年从业经验。你的职责是从商业价值和读者市场角度评估小说方案。\n你的评估维度：\n1. 市场定位是否精准（目标读者画像）\n2. 题材热度与差异化\n3. 商业变现潜力（付费点设置、IP改编可能性）\n4. 开篇是否有足够吸引力（黄金三章法则）\n要求：观点犀利，不说废话；用数据和案例支撑判断；明确指出致命问题；给出可执行的改进建议；字数控制在800字以内' },
   { id: 'world-builder', name: '世界观架构师', emoji: '🌍', temperature: 0.7, systemPrompt: '你是一位世界观设计专家，精通历史、经济、社会学。你的职责是审查小说世界观的逻辑自洽性。\n你的评估维度：\n1. 时代背景设定是否准确（如果涉及真实年代）\n2. 经济系统是否合理（主角的商业逻辑能否成立）\n3. 社会结构和权力关系是否自洽\n4. 有没有常识性错误或时代穿帮\n要求：指出具体的逻辑漏洞；提供修正方案；如果设定合理要明确肯定；不要泛泛而谈，要具体到细节；字数控制在800字以内' },
@@ -87,7 +87,8 @@ const EXPERTS = [
   { id: 'dialogue-expert', name: '对白专家', emoji: '💬', temperature: 0.9, systemPrompt: '你是一位对白写作专家，精通影视剧本和小说对白技巧。你的职责是评估对话的质量和效果。\n你的评估维度：\n1. 对白是否符合角色身份和性格\n2. 对话是否推动情节或揭示性格（vs 水字数）\n3. 语言风格是否有时代感和场景感\n4. 潜台词和留白是否到位\n5. 对白节奏感（长短交错、打断、沉默）\n要求：挑出不自然的对白并改写示范；提供3-5句"金句"建议；指出对白中的信息倾倒问题；字数控制在800字以内' },
   { id: 'style-polisher', name: '文笔润色师', emoji: '✨', temperature: 0.9, systemPrompt: '你是一位文学评论家和文字美学专家。你的职责是评估写作质量和文字表现力。\n你的评估维度：\n1. 文笔风格是否统一且有辨识度\n2. 描写是否生动（五感细节、环境氛围）\n3. 比喻和修辞是否新颖不老套\n4. 文字节奏感（长短句搭配）\n5. 情感表达是否到位（而非直白告知）\n要求：挑出写得好的段落并说明为什么好；挑出需要改进的段落并示范改写；提供风格提升的具体技巧；字数控制在800字以内' },
   { id: 'continuity-checker', name: '连续性审查员', emoji: '🔍', temperature: 0.6, systemPrompt: '你是一位极其严苛的逻辑审查员，专门找Bug。你的职责是发现所有前后矛盾和逻辑问题。\n你的审查范围：\n1. 时间线矛盾（日期、年龄、事件顺序）\n2. 空间逻辑错误（地理、距离、场景连贯）\n3. 人物设定前后不一（性格突变、能力忽高忽低）\n4. 金手指/外挂是否合理（是否存在"因为主角所以"的逻辑）\n5. 信息不对称问题（角色知道了不该知道的）\n要求：每个问题标注具体位置；严重程度分级：致命BUG🔴 / 明显问题🟡 / 小瑕疵🟢；给出修复建议；字数控制在800字以内' },
-  { id: 'toxic-reader', name: '毒舌读者', emoji: '🔥', temperature: 0.95, systemPrompt: '你是一位资深网文读者，看过5000+本小说，非常毒舌但判断精准。你代表最挑剔的读者视角。\n你的吐槽角度：\n1. 第一印象是想追还是想弃？为什么？\n2. 套路感有多重？（0-10分）能猜到后续发展吗？\n3. 有没有"爽"到你的点？\n4. 最让你出戏/想弃文的地方是什么？\n5. 和同类型热门小说相比，有什么优势/劣势？\n要求：说人话，不要文绉绉；越犀利越好，但要言之有理；可以用网络流行语和梗；明确给出追读意愿评分（1-10）；字数控制在800字以内' }
+  { id: 'toxic-reader', name: '毒舌读者', emoji: '🔥', temperature: 0.95, systemPrompt: '你是一位资深网文读者，看过5000+本小说，非常毒舌但判断精准。你代表最挑剔的读者视角。\n你的吐槽角度：\n1. 第一印象是想追还是想弃？为什么？\n2. 套路感有多重？（0-10分）能猜到后续发展吗？\n3. 有没有"爽"到你的点？\n4. 最让你出戏/想弃文的地方是什么？\n5. 和同类型热门小说相比，有什么优势/劣势？\n要求：说人话，不要文绉绉；越犀利越好，但要言之有理；可以用网络流行语和梗；明确给出追读意愿评分（1-10）；字数控制在800字以内' },
+  { id: 'ai-detector', name: 'AI味猎手', emoji: '🔬', temperature: 0.85, systemPrompt: '你是一位专门识别AI生成文字痕迹的资深编辑，见过大量AI代写的网文。你的目标是帮作者写出"人味"。\n你的排查维度：\n1. 模板化表达：找出"不禁"、"涌上心头"、"眼眸"、"不由得"、"宛如"等AI高频词汇，列出具体词句\n2. 情感平板化：人物情绪是否过于直白？有没有"他感到愤怒"这类直接定性而非具体感受的描写？\n3. 逻辑过度完整：情节是否每一步都解释得太清楚？真实的人类叙事有省略、有跳跃、有模糊\n4. 对话公式化：对话是否太"正确"？人说话会有打断、语气词、不完整的句子\n5. 节奏机械感：句式长度是否过于均匀？段落结构是否重复？\n6. 过度修辞：比喻是否太精巧、太整齐、太对称？\n输出格式：列出3-5个最明显的AI味特征，每条附上原文例句；给出具体的"人味"改写建议（示范改法，不是修改全文）；最后给出"AI味指数"（0-10，0是纯人工，10是纯AI）；字数控制在800字以内' }
 ];
 
 // ===== 快捷模板 =====
@@ -98,7 +99,7 @@ const QUICK_TEMPLATES = [
     title: '从零起步',
     desc: '全方位评估你的新故事构想',
     prompt: '我有一个新的小说构想，想请各位专家从商业价值、世界观、人物、剧情、文笔等全方位评估。\n\n我的构想是：',
-    experts: 'all' // 全部8位专家
+    experts: 'all' // 全部9位专家
   },
   {
     id: 'genre-confirm',
@@ -462,7 +463,7 @@ async function renderSettingsModal() {
 
       <div class="settings-section">
         <label class="settings-section-title">💰 预估费用</label>
-        <div class="cost-estimate" id="costEstimate">${formatCost(estimateCost(cfg))} / 次讨论（8位专家）</div>
+        <div class="cost-estimate" id="costEstimate">${formatCost(estimateCost(cfg))} / 次讨论（9位专家）</div>
       </div>
     </div>
   `;
@@ -540,7 +541,7 @@ async function saveCurrentKeys() {
 function updateCostEstimate() {
   const cfg = readCurrentConfig();
   const el = document.getElementById('costEstimate');
-  if (el) el.textContent = formatCost(estimateCost(cfg)) + ' / 次讨论（8位专家）';
+  if (el) el.textContent = formatCost(estimateCost(cfg)) + ' / 次讨论（9位专家）';
 }
 
 function readCurrentConfig() {
@@ -575,7 +576,7 @@ function closeChatPanel() { document.getElementById('chatPanel').classList.remov
 function renderChatMessages() {
   const container = document.getElementById('chatMessages');
   if (!store.chatMessages.length) {
-    container.innerHTML = '<div class="chat-guidance"><div class="cg-icon">💬</div><h4>圆桌讨论尚未开始</h4><p>在输入框描述你的小说方案，8位专家将并行给出专业评估。</p><p class="cg-hint">💡 试试下方快捷按钮或输入自定义问题</p></div>';
+    container.innerHTML = '<div class="chat-guidance"><div class="cg-icon">💬</div><h4>圆桌讨论尚未开始</h4><p>在输入框描述你的小说方案，9位专家将并行给出专业评估。</p><p class="cg-hint">💡 试试下方快捷按钮或输入自定义问题</p></div>';
     return;
   }
   container.innerHTML = store.chatMessages.map(msg => {
@@ -634,7 +635,7 @@ async function startRoundtable(topic) {
   openChatPanel();
   store.chatMessages = [];
   store.chatMessages.push({ type: 'user', text: topic });
-  store.chatMessages.push({ type: 'system', text: '⏳ 正在召集 8 位专家，并行请求中...' });
+  store.chatMessages.push({ type: 'system', text: '⏳ 正在召集 9 位专家，并行请求中...' });
 
   // Create progress message
   const cfg = getUserConfig();
@@ -660,8 +661,8 @@ async function startRoundtable(topic) {
   renderChatMessages();
 
   const sc = result.results.filter(r => r.success).length;
-  if (sc === 8) showNotification('✅ 8 位专家全部完成！', 'success');
-  else showNotification('⚠️ ' + sc + '/8 完成，部分失败', 'warning');
+  if (sc === EXPERTS.length) showNotification('✅ ' + EXPERTS.length + ' 位专家全部完成！', 'success');
+  else showNotification('⚠️ ' + sc + '/' + EXPERTS.length + ' 完成，部分失败', 'warning');
 
   // Update session list
   renderSessionList();
@@ -681,7 +682,8 @@ const EXPERT_CARDS = {
   ],
   support: [
     { id: 'continuity-checker', icon: '🔍', color: 'teal', name: '连续性审查员', subtitle: 'Bug检测 · 逻辑校验', scenario: '发现时间线矛盾、设定冲突和逻辑漏洞', skills: ['逻辑审查', '时间线', '设定一致', 'Bug分级'] },
-    { id: 'toxic-reader', icon: '🔥', color: 'pink', name: '毒舌读者', subtitle: '读者视角 · 犀利吐槽', scenario: '代表最挑剔读者，给出追读意愿评分', skills: ['读者视角', '套路识别', '爽点判断', '弃文预警'] }
+    { id: 'toxic-reader', icon: '🔥', color: 'pink', name: '毒舌读者', subtitle: '读者视角 · 犀利吐槽', scenario: '代表最挑剔读者，给出追读意愿评分', skills: ['读者视角', '套路识别', '爽点判断', '弃文预警'] },
+    { id: 'ai-detector', icon: '🔬', color: 'teal', name: 'AI味猎手', subtitle: 'AI味检测 · 人味改写', scenario: '检测文字中的AI生成痕迹，帮助作者写出更有"人味"的内容', skills: ['AI味检测', '语言自然度', '人物情感真实性', '叙事节奏'] }
   ]
 };
 
@@ -779,7 +781,7 @@ function initQuickTemplates() {
     container.querySelectorAll('.quick-tpl-card').forEach(c => c.classList.remove('active'));
     card.classList.add('active');
     // 显示提示
-    const expertNames = tpl.experts === 'all' ? '全部 8 位专家' : tpl.experts.map(id => { const ex = EXPERTS.find(e => e.id === id); return ex ? ex.emoji + ex.name : id; }).join('、');
+    const expertNames = tpl.experts === 'all' ? '全部 ' + EXPERTS.length + ' 位专家' : tpl.experts.map(id => { const ex = EXPERTS.find(e => e.id === id); return ex ? ex.emoji + ex.name : id; }).join('、');
     showNotification('已切换模板：' + tpl.title + ' → ' + expertNames, 'info');
   });
 }
@@ -1203,7 +1205,7 @@ function openExpertInfoModal() {
   const modal = document.getElementById('modalOverlay');
   const header = document.getElementById('modalHeader');
   const body = document.getElementById('modalBody');
-  header.innerHTML = '<div class="modal-expert-top"><div class="modal-avatar expert-avatar" style="width:64px;height:64px;border-radius:16px;font-size:28px;background:var(--gradient-1);">👥</div><div class="modal-title"><h2>8 位圆桌专家</h2><p>并行评估你的小说方案</p></div></div>';
+  header.innerHTML = '<div class="modal-expert-top"><div class="modal-avatar expert-avatar" style="width:64px;height:64px;border-radius:16px;font-size:28px;background:var(--gradient-1);">👥</div><div class="modal-title"><h2>9 位圆桌专家</h2><p>并行评估你的小说方案</p></div></div>';
   body.innerHTML = '<div class="expert-info-modal"><div class="expert-info-grid">' + EXPERTS.map(e => '<div class="expert-info-item"><div class="ei-icon expert-avatar" style="width:40px;height:40px;border-radius:10px;font-size:20px;">' + e.emoji + '</div><div class="ei-text"><h5>' + e.name + '</h5><p>' + e.systemPrompt.split('\n')[0].slice(0, 30) + '...</p></div></div>').join('') + '</div></div>';
   document.getElementById('modalInvite').style.display = 'none';
   modal.classList.add('active');

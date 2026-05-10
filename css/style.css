@@ -203,6 +203,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .expert-card[data-expert="continuity-checker"]::before{background:linear-gradient(135deg,#0984e3,#74b9ff)}
 .expert-card[data-expert="toxic-reader"]{--expert-avatar-bg:linear-gradient(135deg,rgba(225,112,85,.22),rgba(225,112,85,.08));--expert-avatar-border:rgba(225,112,85,.25);--expert-accent:#e17055}
 .expert-card[data-expert="toxic-reader"]::before{background:linear-gradient(135deg,#e17055,#fab1a0)}
+.expert-card[data-expert="ai-detector"]{--expert-avatar-bg:linear-gradient(135deg,rgba(0,206,209,.22),rgba(0,206,209,.08));--expert-avatar-border:rgba(0,206,209,.25);--expert-accent:#00ced1}
+.expert-card[data-expert="ai-detector"]::before{background:linear-gradient(135deg,#00ced1,#48d1cc)}
 .expert-card:hover .expert-avatar{background:linear-gradient(135deg,rgba(139,124,246,.3),rgba(139,124,246,.12));border-color:rgba(139,124,246,.35);box-shadow:0 0 16px rgba(139,124,246,.2)}
 .expert-meta{flex:1}
 .expert-meta h4{font-size:var(--text-base);font-weight:600;margin-bottom:2px}
