@@ -310,6 +310,12 @@ async function runRoundtable(topic, onProgress) {
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
 
+    // 如果已取消，返回取消标记，不保存历史
+    if (signal.aborted) {
+      store.currentResults = { topic, totalTime, results, cancelled: true };
+      return store.currentResults;
+    }
+
     // Save history (含完整 results)
     const entry = {
       id: Date.now(), topic: topic.slice(0, 200), timestamp: new Date().toISOString(), totalTime,
@@ -654,6 +660,14 @@ async function startRoundtable(topic) {
     }
     renderChatMessages();
   });
+
+  // 检查是否被用户取消
+  if (result && result.cancelled) {
+    store.chatMessages = store.chatMessages.filter(m => m.type !== 'progress' && !(m.type === 'system' && m.text.includes('⏳')));
+    store.chatMessages.push({ type: 'system', text: '🚫 讨论已取消' });
+    renderChatMessages();
+    return;
+  }
 
   // Replace progress with results
   store.chatMessages = store.chatMessages.filter(m => m.type !== 'progress' && !(m.type === 'system' && m.text.includes('⏳')));
@@ -1093,6 +1107,14 @@ async function followUpRoundtable(question) {
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
 
+    // 如果已取消，清理 UI 并返回
+    if (signal.aborted) {
+      store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+      store.chatMessages.push({ type: 'system', text: '🚫 追问已取消' });
+      renderChatMessages();
+      return;
+    }
+
     // 更新历史记录
     const newResults = results.map(r => r.success ? { expertName: r.expert.name, expertId: r.expert.id, emoji: r.expert.emoji, content: r.content, model: r.modelInfo ? r.modelInfo.name : r.modelId, duration: r.elapsed } : { expertName: r.expert ? r.expert.name : '未知', expertId: r.expert ? r.expert.id : '', emoji: r.expert ? r.expert.emoji : '❓', error: r.error });
     // 记录 assistant 回复到 rounds
@@ -1187,9 +1209,13 @@ async function followUpSingleExpert(question, expertId) {
       showNotification(expert.emoji + ' ' + expert.name + ' 回复完成', 'success');
     } catch (err) {
       store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
-      const errMsg = err.name === 'AbortError' ? '已取消' : err.message;
-      store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: errMsg }], totalTime: '0', cost: '¥0' });
-      showNotification(expert.emoji + ' ' + expert.name + (err.name === 'AbortError' ? ' 已取消' : ' 请求失败'), err.name === 'AbortError' ? 'info' : 'warning');
+      if (err.name === 'AbortError') {
+        store.chatMessages.push({ type: 'system', text: '🚫 ' + expert.emoji + ' ' + expert.name + ' 追问已取消' });
+        showNotification(expert.emoji + ' ' + expert.name + ' 已取消', 'info');
+      } else {
+        store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: err.message }], totalTime: '0', cost: '¥0' });
+        showNotification(expert.emoji + ' ' + expert.name + ' 请求失败', 'warning');
+      }
     }
 
     renderChatMessages();
