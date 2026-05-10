@@ -4,20 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NovelRoundTable - AI 小说创作协作平台</title>
-  <meta name="description" content="NovelRoundTable 是一款 AI 驱动的小说创作协作平台，9 位 AI 专家从情节、人物、世界观等维度为你的故事提供专业评估与创意灵感。">
+  <meta name="description" content="NovelRoundTable 是一款 AI 驱动的小说创作协作平台，12 位 AI 专家从情节、人物、世界观等维度为你的故事提供专业评估与创意灵感。">
   <meta name="keywords" content="AI小说创作,小说圆桌会,AI写作助手,创意写作,NovelRoundTable">
   <meta name="author" content="NovelRoundTable">
   <!-- Open Graph -->
   <meta property="og:title" content="NovelRoundTable - AI 小说创作协作平台">
-  <meta property="og:description" content="9 位 AI 创作专家并行评估你的小说方案，从情节结构、人物塑造、世界观到市场潜力，全方位助力创作。">
+  <meta property="og:description" content="12 位 AI 创作专家并行评估你的小说方案，从情节结构、人物塑造、世界观到市场潜力，全方位助力创作。">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://mingzhong717-droid.github.io/novel-roundtable-v2/">
   <meta property="og:locale" content="zh_CN">
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="NovelRoundTable - AI 小说创作协作平台">
-  <meta name="twitter:description" content="9 位 AI 创作专家并行评估你的小说方案，全方位助力创作。">
-  <link rel="stylesheet" href="css/style.css?v=3.0.0">
+  <meta name="twitter:description" content="12 位 AI 创作专家并行评估你的小说方案，全方位助力创作。">
+  <link rel="stylesheet" href="css/style.css?v=3.1.0">
 </head>
 <body>
   <canvas id="particlesCanvas"></canvas>
@@ -90,7 +90,7 @@
           </div>
           <div class="input-header">
             <h3 id="phaseTitle">💡 说出你的创作想法</h3>
-            <p id="phaseSubtitle">描述你想写的故事，9 位 AI 专家将并行给出专业评估</p>
+            <p id="phaseSubtitle">描述你想写的故事，12 位 AI 专家将并行给出专业评估</p>
             <p class="input-header-tip" id="phaseBadge">✅ 内置免费模型，无需配置 API Key 即可开始体验</p>
           </div>
           <div class="input-area">
@@ -111,8 +111,13 @@
       <!-- Expert Cards -->
       <section class="experts-section scroll-reveal" id="expertSection">
         <div class="section-header">
-          <h2>9 位创作专家</h2>
+          <h2>12 位创作专家</h2>
           <p>每位专家从不同维度评估你的小说方案，点击卡片查看详情</p>
+          <div class="expert-category-tabs">
+            <button class="category-tab active" data-category="all">全部<span class="tab-count">12</span></button>
+            <button class="category-tab" data-category="functional">职能专家<span class="tab-count">9</span></button>
+            <button class="category-tab" data-category="prototype">原型专家<span class="tab-count">3</span></button>
+          </div>
           <div class="expert-filter">
             <button class="filter-btn active" data-filter="all">全部</button>
             <button class="filter-btn" data-filter="core">核心团队</button>
@@ -130,7 +135,7 @@
           <div class="expert-grid" id="genreGrid"></div>
         </div>
         <div class="expert-group" data-group="support">
-          <div class="expert-group-header"><h3>专业支持团队</h3><span class="group-badge">3 位</span></div>
+          <div class="expert-group-header"><h3>专业支持团队</h3><span class="group-badge">6 位</span></div>
           <div class="expert-grid" id="supportGrid"></div>
         </div>
       </section>
@@ -155,13 +160,13 @@
       <!-- Footer -->
       <footer class="footer">
         <div class="footer-content">
-          <p>NovelRoundTable v3.0.0 - 小说创作 AI 协作平台</p>
+          <p>NovelRoundTable v3.1.0 - 小说创作 AI 协作平台</p>
           <div class="footer-links">
             <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2" target="_blank">GitHub</a>
             <span class="footer-sep">·</span>
             <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2/issues" target="_blank">反馈建议</a>
             <span class="footer-sep">·</span>
-            <span class="footer-version">v3.0.0</span>
+            <span class="footer-version">v3.1.0</span>
           </div>
         </div>
       </footer>
@@ -254,6 +259,6 @@
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
-  <script src="js/main.js?v=3.0.0"></script>
+  <script src="js/main.js?v=3.1.0"></script>
 </body>
 </html>

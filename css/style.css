@@ -754,3 +754,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 
 /* ===== Round Label ===== */
 .round-label{display:inline-block;margin-left:8px;padding:2px 8px;background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.3);border-radius:10px;font-size:11px;font-weight:500;color:var(--primary);vertical-align:middle}
+
+/* ===== Expert Category Tabs ===== */
+.expert-category-tabs{display:flex;gap:8px;margin-bottom:12px;justify-content:center}
+.category-tab{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:rgba(255,255,255,.04);color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s ease}
+.category-tab:hover{background:rgba(139,124,246,.08);border-color:rgba(139,124,246,.3);color:var(--text-primary)}
+.category-tab.active{background:rgba(139,124,246,.15);border-color:rgba(139,124,246,.4);color:var(--primary)}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:rgba(255,255,255,.08);font-size:11px;font-weight:600;color:var(--text-secondary)}
+.category-tab.active .tab-count{background:rgba(139,124,246,.2);color:var(--primary)}
+[data-theme="light"] .category-tab{border-color:rgba(0,0,0,.1);background:rgba(0,0,0,.03)}
+[data-theme="light"] .category-tab:hover{background:rgba(139,124,246,.06)}
+[data-theme="light"] .category-tab.active{background:rgba(139,124,246,.1)}
+[data-theme="light"] .tab-count{background:rgba(0,0,0,.06)}
+
+/* ===== Source Tag Badge ===== */
+.expert-card{position:relative}
+.source-tag{position:absolute;top:10px;right:10px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;color:#fff;background:var(--tag-color, #666);z-index:1;letter-spacing:.5px}
