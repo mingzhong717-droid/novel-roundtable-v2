@@ -487,6 +487,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .summary-result-content{font-size:var(--text-sm);line-height:1.8;color:var(--text-secondary)}
 .summary-error{color:var(--error,#e55);font-size:var(--text-sm);text-align:center;padding:12px}
 
+/* ===== Ghostwriter (执笔人) ===== */
+.ghostwriter-cta{margin-top:16px;border-radius:var(--radius);border:1px dashed #e0a854;background:rgba(224,168,84,.06);padding:20px}
+.ghostwriter-cta-inner{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.ghostwriter-cta-text{display:flex;align-items:center;gap:12px}
+.ghostwriter-cta-icon{font-size:28px}
+.ghostwriter-cta-text strong{display:block;font-size:var(--text-sm);color:var(--text-primary)}
+.ghostwriter-cta-text p{margin:2px 0 0;font-size:12px;color:var(--text-muted)}
+.btn-ghostwriter{padding:10px 20px;background:linear-gradient(135deg,#e0a854,#c77d35);color:#fff;border:none;border-radius:var(--radius-sm);font-size:var(--text-sm);font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .2s}
+.btn-ghostwriter:hover{opacity:.85}
+.ghostwriter-loading{text-align:center;color:var(--text-muted);font-size:var(--text-sm);padding:12px}
+.ghostwriter-result{padding:20px;border-radius:var(--radius);border:1px solid #e0a854;background:rgba(224,168,84,.03)}
+.ghostwriter-result-header{display:flex;align-items:center;gap:8px;font-size:15px;margin-bottom:12px}
+.ghostwriter-result-header strong{flex:1}
+.btn-copy-ghostwriter{padding:6px 14px;background:rgba(224,168,84,.12);color:#c77d35;border:1px solid #e0a854;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-copy-ghostwriter:hover{background:rgba(224,168,84,.2)}
+.ghostwriter-result-content{font-size:var(--text-sm);line-height:1.8;color:var(--text-secondary)}
+.ghostwriter-result-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
+.ghostwriter-result-content th,.ghostwriter-result-content td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.ghostwriter-result-content th{background:rgba(224,168,84,.08);font-weight:600}
+.ghostwriter-error{color:var(--error,#e55);font-size:var(--text-sm);text-align:center;padding:12px}
+
 /* ===== Settings Modal ===== */
 .settings-modal{max-width:640px;max-height:85vh}
 .settings-modal .modal-body{overflow-y:auto;max-height:calc(85vh - 180px);overscroll-behavior:contain}

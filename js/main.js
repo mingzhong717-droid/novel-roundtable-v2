@@ -2033,6 +2033,9 @@ function appendSummaryButton() {
   // Prevent duplicate
   if (document.getElementById('summaryBtn')) return;
 
+  const msgBody = lastResults.querySelector('.msg-body');
+  if (!msgBody) return;
+
   const btn = document.createElement('div');
   btn.id = 'summaryBtn';
   btn.className = 'summary-cta';
@@ -2048,7 +2051,29 @@ function appendSummaryButton() {
       <button class="btn-summary" onclick="runSummaryRoundtable()">生成综合报告</button>
     </div>
   `;
-  lastResults.querySelector('.msg-body').appendChild(btn);
+  msgBody.appendChild(btn);
+
+  // Ghostwriter button (only in mid/post phase)
+  if (store.currentPhase === 'mid' || store.currentPhase === 'post') {
+    if (!document.getElementById('ghostwriterBtn')) {
+      const gwBtn = document.createElement('div');
+      gwBtn.id = 'ghostwriterBtn';
+      gwBtn.className = 'ghostwriter-cta';
+      gwBtn.innerHTML = `
+        <div class="ghostwriter-cta-inner">
+          <div class="ghostwriter-cta-text">
+            <span class="ghostwriter-cta-icon">✍️</span>
+            <div>
+              <strong>执笔人改写</strong>
+              <p>综合专家意见，直接改写你的原文，输出修订稿 + 修改日志</p>
+            </div>
+          </div>
+          <button class="btn-ghostwriter" onclick="runGhostwriter()">开始改写</button>
+        </div>
+      `;
+      msgBody.appendChild(gwBtn);
+    }
+  }
 }
 
 async function runSummaryRoundtable() {
@@ -2114,11 +2139,166 @@ ${context}`;
   }
 }
 
+// ===== Ghostwriter (执笔人) v3.3.0 =====
+const GHOSTWRITER_CONFIG = {
+  temperature: 0.7,
+  max_tokens: 4000,
+  systemPrompt: `你是一位资深的小说执笔人（Ghostwriter）。你的任务是综合所有专家的评审意见，对作者的原始文本进行改写润色。
+
+你的工作原则：
+1. 你不是评论家，你是动手改稿的人。不要再重复专家的批评，直接给出改好的版本。
+2. 保留作者的核心创意、人设、世界观设定不变。
+3. 重点解决专家们指出的问题：节奏拖沓、对白僵硬、描写AI味重、逻辑漏洞等。
+4. 改写时保持作者原有的风格倾向，不要强行注入你自己的文风。
+5. 对于你无法判断的设定取舍（如人设改动、剧情走向），保留原文并用【存疑】标注。
+
+输出格式要求：
+---
+## ✍️ 改写稿
+
+[直接输出改写后的完整文本，不要分段解释为什么改]
+
+---
+## 📋 修改日志
+
+| 序号 | 修改位置 | 原文摘要 | 修改内容 | 依据专家 |
+|------|----------|----------|----------|----------|
+| 1 | ... | ... | ... | ... |
+
+---
+## ⚠️ 存疑保留
+
+[如有无法判断的部分，列出并说明理由；如无则写"无"]
+`
+};
+
+function buildGhostwriterPrompt(originalText, expertResults) {
+  const successResults = expertResults.filter(r => r.success && r.content);
+  if (!successResults.length) return null;
+
+  const expertContext = successResults.map(r => {
+    const name = r.expert?.name || '专家';
+    const emoji = r.expert?.emoji || '📝';
+    return `### ${emoji} ${name}的意见\n${(r.content || '').slice(0, 1200)}`;
+  }).join('\n\n');
+
+  return `## 作者原文
+
+${originalText}
+
+---
+
+## 各位专家的评审意见
+
+${expertContext}
+
+---
+
+请根据以上专家意见，对作者原文进行改写。注意：
+- 直接输出改写后的完整文本
+- 附上修改日志表格
+- 不要遗漏原文中没有问题的段落（原样保留）
+- 改写幅度要适度，不要面目全非`;
+}
+
+async function runGhostwriter() {
+  const results = store.currentResults?.results;
+  if (!results || results.length === 0) {
+    showNotification('没有专家评审结果，无法执笔', 'warning');
+    return;
+  }
+
+  // Get original text from textarea
+  const originalText = document.getElementById('creativeInput')?.value?.trim();
+  if (!originalText) {
+    showNotification('原文输入框为空，执笔人需要原文才能改写', 'warning');
+    return;
+  }
+
+  // Phase check
+  if (store.currentPhase !== 'mid' && store.currentPhase !== 'post') {
+    showNotification('执笔人仅在"写作中"和"写作后"阶段可用', 'warning');
+    return;
+  }
+
+  // Build prompt
+  const userPrompt = buildGhostwriterPrompt(originalText, results);
+  if (!userPrompt) {
+    showNotification('没有可用的专家意见，无法执笔', 'warning');
+    return;
+  }
+
+  // Show loading state
+  const btn = document.getElementById('ghostwriterBtn');
+  if (btn) btn.innerHTML = '<div class="ghostwriter-loading">✍️ 执笔人正在改写中...</div>';
+
+  try {
+    const cfg = getUserConfig();
+    const modelId = getModelForExpert('chief-editor', cfg);
+    const modelInfo = AVAILABLE_MODELS[modelId];
+    if (!modelInfo) throw new Error('执笔人模型配置不存在');
+    const keys = await getApiKeys();
+    const apiKey = keys[modelInfo.platform];
+    if (!apiKey) throw new Error('未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key');
+
+    const response = await callAI(modelInfo.platform, apiKey, modelId, [
+      { role: 'system', content: GHOSTWRITER_CONFIG.systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { temperature: GHOSTWRITER_CONFIG.temperature, max_tokens: GHOSTWRITER_CONFIG.max_tokens });
+
+    renderGhostwriterResult(btn, response);
+  } catch (err) {
+    if (btn) btn.innerHTML = `<div class="ghostwriter-error">执笔失败：${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderGhostwriterResult(container, content) {
+  if (!container) return;
+  container.className = 'ghostwriter-result';
+  container.innerHTML = `
+    <div class="ghostwriter-result-header">
+      <span>✍️</span>
+      <strong>执笔人改写稿</strong>
+      <button class="btn-copy-ghostwriter" onclick="copyGhostwriterResult()" title="复制改写稿">📋 复制</button>
+    </div>
+    <div class="ghostwriter-result-content" id="ghostwriterContent">${renderMarkdown(content)}</div>
+  `;
+  // Store raw text for copy
+  container.dataset.rawContent = content;
+}
+
+function copyGhostwriterResult() {
+  const container = document.getElementById('ghostwriterBtn');
+  if (!container || !container.dataset.rawContent) {
+    showNotification('没有可复制的内容', 'warning');
+    return;
+  }
+  const raw = container.dataset.rawContent;
+  // Extract only the revised text (between first "## ✍️ 改写稿" and next "---")
+  const match = raw.match(/## ✍️ 改写稿\s*\n([\s\S]*?)(?:\n---|\n## 📋)/);
+  const textToCopy = match ? match[1].trim() : raw;
+
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    showNotification('改写稿已复制到剪贴板', 'success');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = textToCopy;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showNotification('改写稿已复制到剪贴板', 'success');
+  });
+}
+
 // Expose to window for potential onclick usage
 window.openExpertDetailModal = openExpertDetailModal;
 window.selectExpertAndClose = selectExpertAndClose;
 window.useExpertPrompt = useExpertPrompt;
 window.runSummaryRoundtable = runSummaryRoundtable;
+window.runGhostwriter = runGhostwriter;
+window.copyGhostwriterResult = copyGhostwriterResult;
 
 // ===== Sidebar =====
 function initSidebar() {
