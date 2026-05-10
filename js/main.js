@@ -229,11 +229,13 @@ async function callAI(platform, apiKey, model, messages, opts = {}) {
   if (!url) throw new Error('请配置 API 地址');
   if (!apiKey) throw new Error('请配置 ' + pc.name + ' 的 API Key');
   const auth = pc.authType === 'appid' ? apiKey : 'Bearer ' + apiKey;
-  const res = await fetch(url, {
+  const fetchOpts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': auth },
     body: JSON.stringify({ model, messages, max_tokens: opts.max_tokens || 2000, temperature: opts.temperature || 0.8 })
-  });
+  };
+  if (opts.signal) fetchOpts.signal = opts.signal;
+  const res = await fetch(url, fetchOpts);
   if (!res.ok) {
     const friendly = ERROR_MESSAGES[res.status];
     if (friendly) throw new Error(friendly);
@@ -259,55 +261,70 @@ async function testConnection(platform) {
 const store = {
   isRoundtableRunning: false,
   currentResults: null,
-  chatMessages: []
+  chatMessages: [],
+  abortController: null
 };
 
 async function runRoundtable(topic, onProgress) {
   if (store.isRoundtableRunning) return;
   store.isRoundtableRunning = true;
-  const cfg = getUserConfig();
-  const keys = await getApiKeys();
-  const startTime = Date.now();
+  store.abortController = new AbortController();
+  const signal = store.abortController.signal;
+  try {
+    const cfg = getUserConfig();
+    const keys = await getApiKeys();
+    const startTime = Date.now();
 
-  const promises = EXPERTS.map(async (expert) => {
-    const modelId = getModelForExpert(expert.id, cfg);
-    const modelInfo = AVAILABLE_MODELS[modelId];
-    if (!modelInfo) { onProgress?.({ expertId: expert.id, status: 'error', error: '模型不存在' }); return { expert, modelId, success: false, error: '模型不存在' }; }
-    const apiKey = keys[modelInfo.platform];
-    if (!apiKey) { onProgress?.({ expertId: expert.id, status: 'error', error: '未配置API Key' }); return { expert, modelId, modelInfo, success: false, error: '未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key' }; }
-    const t0 = Date.now();
-    onProgress?.({ expertId: expert.id, status: 'loading' });
-    try {
-      const content = await callAI(modelInfo.platform, apiKey, modelId, [
-        { role: 'system', content: expert.systemPrompt },
-        { role: 'user', content: '请评估以下小说方案：\n\n' + topic }
-      ], { temperature: expert.temperature, max_tokens: 2000 });
-      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      onProgress?.({ expertId: expert.id, status: 'done', elapsed });
-      return { expert, modelId, modelInfo, content, elapsed, success: true };
-    } catch (err) {
-      onProgress?.({ expertId: expert.id, status: 'error', error: err.message });
-      return { expert, modelId, modelInfo, success: false, error: err.message };
-    }
-  });
+    const promises = EXPERTS.map(async (expert) => {
+      const modelId = getModelForExpert(expert.id, cfg);
+      const modelInfo = AVAILABLE_MODELS[modelId];
+      if (!modelInfo) { onProgress?.({ expertId: expert.id, status: 'error', error: '模型不存在' }); return { expert, modelId, success: false, error: '模型不存在' }; }
+      const apiKey = keys[modelInfo.platform];
+      if (!apiKey) { onProgress?.({ expertId: expert.id, status: 'error', error: '未配置API Key' }); return { expert, modelId, modelInfo, success: false, error: '未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key' }; }
+      const t0 = Date.now();
+      onProgress?.({ expertId: expert.id, status: 'loading' });
+      try {
+        const content = await callAI(modelInfo.platform, apiKey, modelId, [
+          { role: 'system', content: expert.systemPrompt },
+          { role: 'user', content: '请评估以下小说方案：\n\n' + topic }
+        ], { temperature: expert.temperature, max_tokens: 2000, signal });
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+        onProgress?.({ expertId: expert.id, status: 'done', elapsed });
+        return { expert, modelId, modelInfo, content, elapsed, success: true };
+      } catch (err) {
+        if (err.name === 'AbortError') return { expert, modelId, modelInfo, success: false, error: '已取消' };
+        onProgress?.({ expertId: expert.id, status: 'error', error: err.message });
+        return { expert, modelId, modelInfo, success: false, error: err.message };
+      }
+    });
 
-  const settled = await Promise.allSettled(promises);
-  const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-  const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
+    const settled = await Promise.allSettled(promises);
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
 
-  // Save history (含完整 results)
-  const entry = {
-    id: Date.now(), topic: topic.slice(0, 200), timestamp: new Date().toISOString(), totalTime,
-    preset: cfg.mode === 'preset' ? cfg.selectedPreset : cfg.mode,
-    successCount: results.filter(r => r.success).length,
-    results: results.map(r => r.success ? { expertName: r.expert.name, expertId: r.expert.id, emoji: r.expert.emoji, content: r.content, model: r.modelInfo ? r.modelInfo.name : r.modelId, duration: r.elapsed } : { expertName: r.expert ? r.expert.name : '未知', expertId: r.expert ? r.expert.id : '', emoji: r.expert ? r.expert.emoji : '❓', error: r.error }),
-    rounds: [{ role: 'user', content: topic }] // 多轮对话记录
-  };
-  const hist = getHistory(); hist.unshift(entry); saveHistory(hist);
+    // Save history (含完整 results)
+    const entry = {
+      id: Date.now(), topic: topic.slice(0, 200), timestamp: new Date().toISOString(), totalTime,
+      preset: cfg.mode === 'preset' ? cfg.selectedPreset : cfg.mode,
+      successCount: results.filter(r => r.success).length,
+      results: results.map(r => r.success ? { expertName: r.expert.name, expertId: r.expert.id, emoji: r.expert.emoji, content: r.content, model: r.modelInfo ? r.modelInfo.name : r.modelId, duration: r.elapsed } : { expertName: r.expert ? r.expert.name : '未知', expertId: r.expert ? r.expert.id : '', emoji: r.expert ? r.expert.emoji : '❓', error: r.error }),
+      rounds: [{ role: 'user', content: topic }] // 多轮对话记录
+    };
+    const hist = getHistory(); hist.unshift(entry); saveHistory(hist);
 
-  store.currentResults = { topic, totalTime, results, cost: formatCost(estimateCost(cfg)), historyId: entry.id };
-  store.isRoundtableRunning = false;
-  return store.currentResults;
+    store.currentResults = { topic, totalTime, results, cost: formatCost(estimateCost(cfg)), historyId: entry.id };
+    return store.currentResults;
+  } finally {
+    store.isRoundtableRunning = false;
+    store.abortController = null;
+  }
+}
+
+function cancelRoundtable() {
+  if (store.abortController) {
+    store.abortController.abort();
+    showNotification('已取消讨论请求', 'info');
+  }
 }
 
 // ===== Safe Markdown Renderer (XSS-safe) =====
@@ -555,7 +572,7 @@ function renderChatMessages() {
     return;
   }
   container.innerHTML = store.chatMessages.map(msg => {
-    if (msg.type === 'system') return `<div class="chat-msg system"><div class="msg-icon">⚡</div><div class="msg-body">${msg.text}</div></div>`;
+    if (msg.type === 'system') return `<div class="chat-msg system"><div class="msg-icon">⚡</div><div class="msg-body">${msg.text}</div>${msg.text.includes('⏳') && store.abortController ? '<button class="btn-cancel-roundtable" onclick="cancelRoundtable()" title="取消请求">✕ 取消</button>' : ''}</div>`;
     if (msg.type === 'user') return `<div class="chat-msg user"><div class="msg-icon">👤</div><div class="msg-body"><div class="msg-name">你的小说方案</div><div class="msg-text">${escapeHtml(msg.text)}</div></div></div>`;
     if (msg.type === 'progress') return renderProgressPanel(msg);
     if (msg.type === 'results') return renderResultCards(msg);
@@ -1022,66 +1039,73 @@ async function followUpRoundtable(question) {
   // friday 已有内置默认 AppID，无需检查
 
   store.isRoundtableRunning = true;
-  // 追加用户消息到聊天面板
-  store.chatMessages.push({ type: 'user', text: question });
-  store.chatMessages.push({ type: 'system', text: '⏳ 专家们正在回应追问...' });
-  renderChatMessages();
+  store.abortController = new AbortController();
+  const signal = store.abortController.signal;
+  try {
+    // 追加用户消息到聊天面板
+    store.chatMessages.push({ type: 'user', text: question });
+    store.chatMessages.push({ type: 'system', text: '⏳ 专家们正在回应追问...' });
+    renderChatMessages();
 
-  const cfg = getUserConfig();
-  const keys = await getApiKeys();
-  const histId = store.currentResults.historyId;
-  const hist = getHistory();
-  const entry = hist.find(h => h.id === histId);
-  // 构建多轮消息历史
-  const prevRounds = entry ? (entry.rounds || []) : [];
-  prevRounds.push({ role: 'user', content: question });
+    const cfg = getUserConfig();
+    const keys = await getApiKeys();
+    const histId = store.currentResults.historyId;
+    const hist = getHistory();
+    const entry = hist.find(h => h.id === histId);
+    // 构建多轮消息历史
+    const prevRounds = entry ? (entry.rounds || []) : [];
+    prevRounds.push({ role: 'user', content: question });
 
-  const startTime = Date.now();
-  const promises = EXPERTS.map(async (expert) => {
-    const modelId = getModelForExpert(expert.id, cfg);
-    const modelInfo = AVAILABLE_MODELS[modelId];
-    if (!modelInfo) return { expert, modelId, success: false, error: '模型不存在' };
-    const apiKey = keys[modelInfo.platform];
-    if (!apiKey) return { expert, modelId, modelInfo, success: false, error: '未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key' };
-    // 构建含历史的 messages（prevRounds 已包含当前 question）
-    const messages = [{ role: 'system', content: expert.systemPrompt }];
-    prevRounds.forEach(r => {
-      if (r.role === 'user') messages.push({ role: 'user', content: r.content });
-      if (r.role === 'assistant' && r.expertId === expert.id) messages.push({ role: 'assistant', content: r.content });
+    const startTime = Date.now();
+    const promises = EXPERTS.map(async (expert) => {
+      const modelId = getModelForExpert(expert.id, cfg);
+      const modelInfo = AVAILABLE_MODELS[modelId];
+      if (!modelInfo) return { expert, modelId, success: false, error: '模型不存在' };
+      const apiKey = keys[modelInfo.platform];
+      if (!apiKey) return { expert, modelId, modelInfo, success: false, error: '未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key' };
+      // 构建含历史的 messages（prevRounds 已包含当前 question）
+      const messages = [{ role: 'system', content: expert.systemPrompt }];
+      prevRounds.forEach(r => {
+        if (r.role === 'user') messages.push({ role: 'user', content: r.content });
+        if (r.role === 'assistant' && r.expertId === expert.id) messages.push({ role: 'assistant', content: r.content });
+      });
+      const t0 = Date.now();
+      try {
+        const content = await callAI(modelInfo.platform, apiKey, modelId, messages, { temperature: expert.temperature, max_tokens: 2000, signal });
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+        return { expert, modelId, modelInfo, content, elapsed, success: true };
+      } catch (err) {
+        if (err.name === 'AbortError') return { expert, modelId, modelInfo, success: false, error: '已取消' };
+        return { expert, modelId, modelInfo, success: false, error: err.message };
+      }
     });
-    const t0 = Date.now();
-    try {
-      const content = await callAI(modelInfo.platform, apiKey, modelId, messages, { temperature: expert.temperature, max_tokens: 2000 });
-      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      return { expert, modelId, modelInfo, content, elapsed, success: true };
-    } catch (err) {
-      return { expert, modelId, modelInfo, success: false, error: err.message };
+
+    const settled = await Promise.allSettled(promises);
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
+
+    // 更新历史记录
+    const newResults = results.map(r => r.success ? { expertName: r.expert.name, expertId: r.expert.id, emoji: r.expert.emoji, content: r.content, model: r.modelInfo ? r.modelInfo.name : r.modelId, duration: r.elapsed } : { expertName: r.expert ? r.expert.name : '未知', expertId: r.expert ? r.expert.id : '', emoji: r.expert ? r.expert.emoji : '❓', error: r.error });
+    // 记录 assistant 回复到 rounds
+    results.forEach(r => { if (r.success) prevRounds.push({ role: 'assistant', expertId: r.expert.id, content: r.content }); });
+    if (entry) {
+      entry.rounds = prevRounds;
+      entry.results = [...(entry.results || []), ...newResults];
+      entry.successCount = (entry.successCount || 0) + results.filter(r => r.success).length;
+      updateHistoryEntry(histId, { rounds: entry.rounds, results: entry.results, successCount: entry.successCount });
     }
-  });
 
-  const settled = await Promise.allSettled(promises);
-  const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-  const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, error: '未知错误' });
-
-  // 更新历史记录
-  const newResults = results.map(r => r.success ? { expertName: r.expert.name, expertId: r.expert.id, emoji: r.expert.emoji, content: r.content, model: r.modelInfo ? r.modelInfo.name : r.modelId, duration: r.elapsed } : { expertName: r.expert ? r.expert.name : '未知', expertId: r.expert ? r.expert.id : '', emoji: r.expert ? r.expert.emoji : '❓', error: r.error });
-  // 记录 assistant 回复到 rounds
-  results.forEach(r => { if (r.success) prevRounds.push({ role: 'assistant', expertId: r.expert.id, content: r.content }); });
-  if (entry) {
-    entry.rounds = prevRounds;
-    entry.results = [...(entry.results || []), ...newResults];
-    entry.successCount = (entry.successCount || 0) + results.filter(r => r.success).length;
-    updateHistoryEntry(histId, { rounds: entry.rounds, results: entry.results, successCount: entry.successCount });
+    // 更新 UI
+    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+    const cost = formatCost(estimateCost(cfg));
+    store.chatMessages.push({ type: 'results', results, totalTime, cost });
+    store.currentResults = { ...store.currentResults, results, totalTime, cost };
+    renderChatMessages();
+    renderSessionList();
+  } finally {
+    store.isRoundtableRunning = false;
+    store.abortController = null;
   }
-
-  // 更新 UI
-  store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
-  const cost = formatCost(estimateCost(cfg));
-  store.chatMessages.push({ type: 'results', results, totalTime, cost });
-  store.currentResults = { ...store.currentResults, results, totalTime, cost };
-  store.isRoundtableRunning = false;
-  renderChatMessages();
-  renderSessionList();
 }
 
 // ===== 单专家追问 =====
@@ -1091,75 +1115,80 @@ async function followUpSingleExpert(question, expertId) {
   if (!expert) { showNotification('未找到该专家', 'warning'); return; }
 
   store.isRoundtableRunning = true;
-  store.chatMessages.push({ type: 'user', text: question });
-  store.chatMessages.push({ type: 'system', text: '⏳ ' + expert.emoji + ' ' + expert.name + ' 正在回应...' });
-  renderChatMessages();
-
-  const cfg = getUserConfig();
-  const keys = await getApiKeys();
-  const modelId = getModelForExpert(expert.id, cfg);
-  const modelInfo = AVAILABLE_MODELS[modelId];
-
-  if (!modelInfo) {
-    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
-    store.chatMessages.push({ type: 'results', results: [{ expert, modelId, success: false, error: '模型不存在' }], totalTime: '0', cost: '¥0' });
-    store.isRoundtableRunning = false;
-    renderChatMessages();
-    return;
-  }
-
-  const apiKey = keys[modelInfo.platform];
-  if (!apiKey) {
-    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
-    store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: '未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key' }], totalTime: '0', cost: '¥0' });
-    store.isRoundtableRunning = false;
-    renderChatMessages();
-    return;
-  }
-
-  // 构建多轮消息历史
-  const histId = store.currentResults.historyId;
-  const hist = getHistory();
-  const entry = hist.find(h => h.id === histId);
-  const prevRounds = entry ? (entry.rounds || []) : [];
-  prevRounds.push({ role: 'user', content: question });
-
-  const messages = [{ role: 'system', content: expert.systemPrompt }];
-  prevRounds.forEach(r => {
-    if (r.role === 'user') messages.push({ role: 'user', content: r.content });
-    if (r.role === 'assistant' && r.expertId === expert.id) messages.push({ role: 'assistant', content: r.content });
-  });
-
-  const t0 = Date.now();
+  store.abortController = new AbortController();
+  const signal = store.abortController.signal;
   try {
-    const content = await callAI(modelInfo.platform, apiKey, modelId, messages, { temperature: expert.temperature, max_tokens: 2000 });
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-    const result = { expert, modelId, modelInfo, content, elapsed, success: true };
+    store.chatMessages.push({ type: 'user', text: question });
+    store.chatMessages.push({ type: 'system', text: '⏳ ' + expert.emoji + ' ' + expert.name + ' 正在回应...' });
+    renderChatMessages();
 
-    // 更新历史
-    prevRounds.push({ role: 'assistant', expertId: expert.id, content });
-    const newResult = { expertName: expert.name, expertId: expert.id, emoji: expert.emoji, content, model: modelInfo.name, duration: elapsed };
-    if (entry) {
-      entry.rounds = prevRounds;
-      entry.results = [...(entry.results || []), newResult];
-      entry.successCount = (entry.successCount || 0) + 1;
-      updateHistoryEntry(histId, { rounds: entry.rounds, results: entry.results, successCount: entry.successCount });
+    const cfg = getUserConfig();
+    const keys = await getApiKeys();
+    const modelId = getModelForExpert(expert.id, cfg);
+    const modelInfo = AVAILABLE_MODELS[modelId];
+
+    if (!modelInfo) {
+      store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+      store.chatMessages.push({ type: 'results', results: [{ expert, modelId, success: false, error: '模型不存在' }], totalTime: '0', cost: '¥0' });
+      renderChatMessages();
+      return;
     }
 
-    // 更新 UI
-    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
-    store.chatMessages.push({ type: 'results', results: [result], totalTime: elapsed, cost: formatCost(estimateCost(cfg) / 8) });
-    store.currentResults = { ...store.currentResults, results: [result], totalTime: elapsed };
-    showNotification(expert.emoji + ' ' + expert.name + ' 回复完成', 'success');
-  } catch (err) {
-    store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
-    store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: err.message }], totalTime: '0', cost: '¥0' });
-    showNotification(expert.emoji + ' ' + expert.name + ' 请求失败', 'warning');
-  }
+    const apiKey = keys[modelInfo.platform];
+    if (!apiKey) {
+      store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+      store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: '未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key' }], totalTime: '0', cost: '¥0' });
+      renderChatMessages();
+      return;
+    }
 
-  store.isRoundtableRunning = false;
-  renderChatMessages();
-  renderSessionList();
+    // 构建多轮消息历史
+    const histId = store.currentResults.historyId;
+    const hist = getHistory();
+    const entry = hist.find(h => h.id === histId);
+    const prevRounds = entry ? (entry.rounds || []) : [];
+    prevRounds.push({ role: 'user', content: question });
+
+    const messages = [{ role: 'system', content: expert.systemPrompt }];
+    prevRounds.forEach(r => {
+      if (r.role === 'user') messages.push({ role: 'user', content: r.content });
+      if (r.role === 'assistant' && r.expertId === expert.id) messages.push({ role: 'assistant', content: r.content });
+    });
+
+    const t0 = Date.now();
+    try {
+      const content = await callAI(modelInfo.platform, apiKey, modelId, messages, { temperature: expert.temperature, max_tokens: 2000, signal });
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      const result = { expert, modelId, modelInfo, content, elapsed, success: true };
+
+      // 更新历史
+      prevRounds.push({ role: 'assistant', expertId: expert.id, content });
+      const newResult = { expertName: expert.name, expertId: expert.id, emoji: expert.emoji, content, model: modelInfo.name, duration: elapsed };
+      if (entry) {
+        entry.rounds = prevRounds;
+        entry.results = [...(entry.results || []), newResult];
+        entry.successCount = (entry.successCount || 0) + 1;
+        updateHistoryEntry(histId, { rounds: entry.rounds, results: entry.results, successCount: entry.successCount });
+      }
+
+      // 更新 UI
+      store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+      store.chatMessages.push({ type: 'results', results: [result], totalTime: elapsed, cost: formatCost(estimateCost(cfg) / 8) });
+      store.currentResults = { ...store.currentResults, results: [result], totalTime: elapsed };
+      showNotification(expert.emoji + ' ' + expert.name + ' 回复完成', 'success');
+    } catch (err) {
+      store.chatMessages = store.chatMessages.filter(m => !(m.type === 'system' && m.text.includes('⏳')));
+      const errMsg = err.name === 'AbortError' ? '已取消' : err.message;
+      store.chatMessages.push({ type: 'results', results: [{ expert, modelId, modelInfo, success: false, error: errMsg }], totalTime: '0', cost: '¥0' });
+      showNotification(expert.emoji + ' ' + expert.name + (err.name === 'AbortError' ? ' 已取消' : ' 请求失败'), err.name === 'AbortError' ? 'info' : 'warning');
+    }
+
+    renderChatMessages();
+    renderSessionList();
+  } finally {
+    store.isRoundtableRunning = false;
+    store.abortController = null;
+  }
 }
 
 // ===== Expert Info Modal =====
@@ -1247,9 +1276,20 @@ function filterMaterials(query) {
 
 // ===== Theme =====
 function toggleTheme() {
-  document.body.classList.toggle('light-theme');
-  document.getElementById('btnTheme').innerHTML = document.body.classList.contains('light-theme') ? '☀' : '🌙';
+  const isLight = document.body.getAttribute('data-theme') === 'light';
+  document.body.setAttribute('data-theme', isLight ? '' : 'light');
+  document.getElementById('btnTheme').innerHTML = isLight ? '🌙' : '☀';
+  localStorage.setItem('nrt-theme', isLight ? 'dark' : 'light');
 }
+// Restore theme on load
+(function restoreTheme() {
+  const saved = localStorage.getItem('nrt-theme');
+  if (saved === 'light') {
+    document.body.setAttribute('data-theme', 'light');
+    const btn = document.getElementById('btnTheme');
+    if (btn) btn.innerHTML = '☀';
+  }
+})();
 
 // ===== Notifications =====
 function showNotification(message, type) {
@@ -1331,6 +1371,7 @@ function generateMarkdown(topic, results, timestamp) {
     md += '---\n\n';
   });
 
+  md += '\n> *由 [NovelRoundTable](https://mingzhong717-droid.github.io/novel-roundtable-v2/) 生成*\n';
   return md;
 }
 
@@ -1977,6 +2018,7 @@ function generateExportContent(format, topic, results, template) {
       }
       md += '---\n\n';
     });
+    md += '\n> *由 [NovelRoundTable](https://mingzhong717-droid.github.io/novel-roundtable-v2/) 生成*\n';
     return md;
   } else if (format === 'txt') {
     let txt = '小说圆桌讨论 - ' + topic + '\n时间：' + timestamp + '\n' + '='.repeat(40) + '\n\n';
@@ -1984,6 +2026,7 @@ function generateExportContent(format, topic, results, template) {
       txt += '【' + r.expert.emoji + ' ' + r.expert.name + '】\n';
       txt += (r.content || '') + '\n\n';
     });
+    txt += '\n-- 由 NovelRoundTable 生成 (https://mingzhong717-droid.github.io/novel-roundtable-v2/)\n';
     return txt;
   } else if (format === 'json') {
     return JSON.stringify({
@@ -2009,7 +2052,7 @@ function generateExportContent(format, topic, results, template) {
     html += '<h1>' + escapeHtml(topic) + '</h1><p>生成时间: ' + timestamp + '</p>';
     successResults.forEach(r => {
       html += '<div class="expert"><h2>' + r.expert.emoji + ' ' + escapeHtml(r.expert.name) + '</h2>';
-      html += '<div>' + (r.content || '').replace(/\n/g, '<br>') + '</div>';
+      html += '<div>' + escapeHtml(r.content || '') + '</div>';
       if (r.modelInfo) html += '<p class="meta">模型: ' + escapeHtml(r.modelInfo.name) + ' | 耗时: ' + (r.elapsed || '?') + 's</p>';
       html += '</div>';
     });
@@ -2079,7 +2122,7 @@ function toolAnalyze() {
         </div>
 
         <div class="atab-panel" data-panel="keywords">
-          <div class="analyze-card">
+          ${analysis.keywords.length ? `<div class="analyze-card">
             <h4>🔑 高频关键词 TOP 15</h4>
             <div class="ac-keyword-cloud">${analysis.keywords.map((k, i) => {
               const size = Math.max(12, 24 - i * 1.5);
@@ -2090,10 +2133,11 @@ function toolAnalyze() {
           <div class="analyze-card">
             <h4>📈 关键词频率分布</h4>
             <div class="ac-bars">${analysis.keywords.slice(0, 10).map(k => {
-              const pct = Math.round(k.count / analysis.keywords[0].count * 100);
+              const maxCount = analysis.keywords[0].count;
+              const pct = maxCount ? Math.round(k.count / maxCount * 100) : 0;
               return '<div class="ac-bar-row"><span class="ac-bar-name">' + k.word + '</span><div class="ac-bar-track"><div class="ac-bar-fill accent" style="width:' + pct + '%"></div></div><span class="ac-bar-val">' + k.count + '次</span></div>';
             }).join('')}</div>
-          </div>
+          </div>` : '<div class="analyze-card"><p class="ac-empty">未提取到有效关键词</p></div>'}
         </div>
 
         <div class="atab-panel" data-panel="consensus">
