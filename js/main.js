@@ -551,7 +551,7 @@ function closeChatPanel() { document.getElementById('chatPanel').classList.remov
 function renderChatMessages() {
   const container = document.getElementById('chatMessages');
   if (!store.chatMessages.length) {
-    container.innerHTML = '<div class="chat-guidance"><div class="cg-icon">💬</div><h4>圆桌讨论尚未开始</h4><p>在输入框描述你的小说方案，8位专家将并行给出专业评估。</p></div>';
+    container.innerHTML = '<div class="chat-guidance"><div class="cg-icon">💬</div><h4>圆桌讨论尚未开始</h4><p>在输入框描述你的小说方案，8位专家将并行给出专业评估。</p><p class="cg-hint">💡 试试下方快捷按钮或输入自定义问题</p></div>';
     return;
   }
   container.innerHTML = store.chatMessages.map(msg => {
@@ -963,16 +963,25 @@ function initEventListeners() {
     });
   });
 
-  // Tools (coming soon - no action)
-  document.querySelectorAll('.tool-item.coming-soon').forEach(item => {
-    item.addEventListener('click', function(e) { e.preventDefault(); });
+// Sidebar Tools
+document.querySelectorAll('.tool-item[data-action]').forEach(item => {
+  item.addEventListener('click', function() {
+    const action = this.dataset.action;
+    if (action === 'upload') toolUpload();
+    else if (action === 'mindmap') toolMindmap();
+    else if (action === 'download') toolDownload();
+    else if (action === 'analyze') toolAnalyze();
   });
+});
+// Tool modal close
+document.getElementById('toolModalClose')?.addEventListener('click', closeToolModal);
+document.getElementById('toolModalOverlay')?.addEventListener('click', function(e) { if (e.target === this) closeToolModal(); });
 
   // New session
   document.getElementById('btnNewSession')?.addEventListener('click', () => { store.chatMessages = []; renderChatMessages(); openChatPanel(); showNotification('新圆桌会已创建'); });
 
   // Escape
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeModal(); closeSettingsModal(); closeChatPanel(); } });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeModal(); closeSettingsModal(); closeChatPanel(); closeToolModal(); } });
 
   // Retry buttons (delegated)
   document.addEventListener('click', function(e) {
@@ -1368,5 +1377,954 @@ function exportHistoryEntry(id) {
 
 // 暴露 exportMarkdown 到全局（因为 onclick 在 IIFE 外）
 window.exportMarkdown = exportMarkdown;
+
+// ===== 功能工具实现（增强版） =====
+
+function openToolModal(title, bodyHtml, footerHtml) {
+  const overlay = document.getElementById('toolModalOverlay');
+  document.getElementById('toolModalHeader').innerHTML = '<h2>' + title + '</h2>';
+  document.getElementById('toolModalBody').innerHTML = bodyHtml;
+  document.getElementById('toolModalFooter').innerHTML = footerHtml || '';
+  overlay.classList.add('active');
+}
+function closeToolModal() {
+  document.getElementById('toolModalOverlay')?.classList.remove('active');
+}
+
+// ===== 工具1: 上传大纲/草稿（增强版） =====
+function toolUpload() {
+  const sessions = store.sessions || [];
+  const sessionOptions = sessions.length
+    ? sessions.map(s => '<option value="' + s.id + '">' + escapeHtml(s.title || '未命名会话') + '</option>').join('')
+    : '<option value="">-- 暂无可关联的圆桌会 --</option>';
+
+  const body = `
+    <div class="tool-upload-content">
+      <div class="tool-steps">
+        <div class="tool-step active" data-step="1"><span class="step-num">1</span><span class="step-text">选择文件</span></div>
+        <div class="tool-step" data-step="2"><span class="step-num">2</span><span class="step-text">填写信息</span></div>
+        <div class="tool-step" data-step="3"><span class="step-num">3</span><span class="step-text">确认导入</span></div>
+      </div>
+      <div class="tool-step-panels">
+        <div class="step-panel active" id="uploadStep1">
+          <p class="tool-desc">上传你的小说大纲、草稿或参考文档，AI 专家将基于此进行讨论。</p>
+          <div class="upload-drop-zone" id="uploadDropZone">
+            <div class="udz-icon">📁</div>
+            <p class="udz-title">拖拽文件到此处</p>
+            <p class="udz-sub">或 <label for="uploadFileInput" class="udz-link">点击选择文件</label></p>
+            <input type="file" id="uploadFileInput" accept=".txt,.md,.text,.doc,.docx,.pdf" style="display:none"/>
+            <span class="udz-hint">支持格式: TXT, Markdown, Word (.doc/.docx), PDF</span>
+            <span class="udz-hint">最大文件大小: 10MB</span>
+          </div>
+          <div class="upload-file-info hidden" id="uploadFileInfo">
+            <div class="ufi-icon">✅</div>
+            <div class="ufi-detail">
+              <span class="ufi-name" id="uploadFileName">-</span>
+              <span class="ufi-size" id="uploadFileSize">-</span>
+            </div>
+            <button class="ufi-remove" id="uploadFileRemove" title="移除文件">&times;</button>
+          </div>
+          <div class="upload-divider"><span>或直接粘贴文本</span></div>
+          <textarea id="uploadTextarea" class="upload-textarea" placeholder="在此粘贴你的大纲或草稿内容..." rows="6"></textarea>
+          <div class="upload-char-count"><span id="uploadCharCount">0</span> 字</div>
+        </div>
+        <div class="step-panel" id="uploadStep2">
+          <div class="upload-form-group">
+            <label class="ufg-label">📌 作品标题 <span class="required">*</span></label>
+            <input type="text" id="uploadTitle" class="ufg-input" placeholder="请输入作品标题"/>
+          </div>
+          <div class="upload-form-group">
+            <label class="ufg-label">📝 作品描述</label>
+            <textarea id="uploadDesc" class="ufg-textarea" placeholder="简要描述作品的核心设定、主要人物和故事走向..." rows="3"></textarea>
+          </div>
+          <div class="upload-form-group">
+            <label class="ufg-label">🏷️ 题材标签</label>
+            <div class="upload-tags" id="uploadTags">
+              <span class="utag" data-tag="玄幻">玄幻</span>
+              <span class="utag" data-tag="都市">都市</span>
+              <span class="utag" data-tag="悬疑">悬疑</span>
+              <span class="utag" data-tag="言情">言情</span>
+              <span class="utag" data-tag="科幻">科幻</span>
+              <span class="utag" data-tag="仙侠">仙侠</span>
+              <span class="utag" data-tag="历史">历史</span>
+              <span class="utag" data-tag="恐怖">恐怖</span>
+            </div>
+          </div>
+          <div class="upload-form-group">
+            <label class="ufg-label">🔗 关联圆桌会</label>
+            <select id="uploadSession" class="ufg-select">${sessionOptions}</select>
+            <span class="ufg-hint">关联后可在圆桌讨论中直接引用此文档</span>
+          </div>
+        </div>
+        <div class="step-panel" id="uploadStep3">
+          <div class="upload-preview">
+            <h4>确认导入信息</h4>
+            <div class="up-summary" id="uploadSummary"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  const footer = `
+    <button class="btn-entry secondary" id="btnUploadPrev" style="display:none">上一步</button>
+    <button class="btn-entry primary" id="btnUploadNext">下一步</button>
+    <button class="btn-entry primary" id="btnUploadConfirm" style="display:none">确认导入</button>
+    <button class="btn-entry secondary" id="btnUploadCancel">取消</button>
+  `;
+  openToolModal('📄 上传大纲/草稿', body, footer);
+
+  // State
+  let currentStep = 1;
+  let uploadedText = '';
+  let uploadedFileName = '';
+  const selectedTags = new Set();
+
+  // Step navigation
+  function goToStep(step) {
+    currentStep = step;
+    document.querySelectorAll('.tool-step').forEach(s => {
+      const sn = parseInt(s.dataset.step);
+      s.classList.toggle('active', sn === step);
+      s.classList.toggle('done', sn < step);
+    });
+    document.querySelectorAll('.step-panel').forEach((p, i) => p.classList.toggle('active', i === step - 1));
+    document.getElementById('btnUploadPrev').style.display = step > 1 ? '' : 'none';
+    document.getElementById('btnUploadNext').style.display = step < 3 ? '' : 'none';
+    document.getElementById('btnUploadConfirm').style.display = step === 3 ? '' : 'none';
+    if (step === 3) renderUploadSummary();
+  }
+
+  function renderUploadSummary() {
+    const title = document.getElementById('uploadTitle').value.trim() || '未命名';
+    const desc = document.getElementById('uploadDesc').value.trim() || '无描述';
+    const tags = [...selectedTags].join(', ') || '无';
+    const textLen = uploadedText.length;
+    document.getElementById('uploadSummary').innerHTML = `
+      <div class="ups-row"><span class="ups-label">标题</span><span class="ups-val">${escapeHtml(title)}</span></div>
+      <div class="ups-row"><span class="ups-label">描述</span><span class="ups-val">${escapeHtml(desc.slice(0, 50))}${desc.length > 50 ? '...' : ''}</span></div>
+      <div class="ups-row"><span class="ups-label">标签</span><span class="ups-val">${escapeHtml(tags)}</span></div>
+      <div class="ups-row"><span class="ups-label">文件</span><span class="ups-val">${uploadedFileName || '手动粘贴'}</span></div>
+      <div class="ups-row"><span class="ups-label">字数</span><span class="ups-val">${textLen} 字</span></div>
+    `;
+  }
+
+  document.getElementById('btnUploadNext').addEventListener('click', function() {
+    if (currentStep === 1) {
+      uploadedText = document.getElementById('uploadTextarea').value.trim();
+      if (!uploadedText) { showNotification('请先上传文件或粘贴内容', 'warning'); return; }
+    }
+    if (currentStep === 2) {
+      const title = document.getElementById('uploadTitle').value.trim();
+      if (!title) { showNotification('请填写作品标题', 'warning'); return; }
+    }
+    goToStep(currentStep + 1);
+  });
+  document.getElementById('btnUploadPrev').addEventListener('click', function() { goToStep(currentStep - 1); });
+
+  // File handling
+  const fileInput = document.getElementById('uploadFileInput');
+  const dropZone = document.getElementById('uploadDropZone');
+  const textarea = document.getElementById('uploadTextarea');
+
+  function handleFile(file) {
+    if (file.size > 10 * 1024 * 1024) { showNotification('文件过大（最大 10MB）', 'warning'); return; }
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (['txt', 'md', 'text'].includes(ext)) {
+      readUploadFile(file, textarea);
+    } else if (['doc', 'docx', 'pdf'].includes(ext)) {
+      // For doc/docx/pdf, show file info but note limitation
+      showNotification('已选择文件（浏览器端仅支持文本预览，Word/PDF 内容将以文件名记录）', 'warning');
+      textarea.value = '[文件: ' + file.name + ']\n\n请在此补充文档的核心内容摘要，以便 AI 专家参考。';
+    }
+    uploadedFileName = file.name;
+    document.getElementById('uploadFileInfo').classList.remove('hidden');
+    document.getElementById('uploadFileName').textContent = file.name;
+    document.getElementById('uploadFileSize').textContent = formatFileSize(file.size);
+  }
+
+  fileInput.addEventListener('change', function() { if (this.files[0]) handleFile(this.files[0]); });
+  dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', function() { this.classList.remove('dragover'); });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault(); this.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  document.getElementById('uploadFileRemove')?.addEventListener('click', function() {
+    uploadedFileName = '';
+    textarea.value = '';
+    document.getElementById('uploadFileInfo').classList.add('hidden');
+    fileInput.value = '';
+  });
+
+  // Char count
+  textarea.addEventListener('input', function() {
+    document.getElementById('uploadCharCount').textContent = this.value.length;
+  });
+
+  // Tags
+  document.querySelectorAll('.utag').forEach(tag => {
+    tag.addEventListener('click', function() {
+      const t = this.dataset.tag;
+      if (selectedTags.has(t)) { selectedTags.delete(t); this.classList.remove('active'); }
+      else { selectedTags.add(t); this.classList.add('active'); }
+    });
+  });
+
+  // Confirm
+  document.getElementById('btnUploadConfirm').addEventListener('click', function() {
+    const input = document.getElementById('creativeInput');
+    const title = document.getElementById('uploadTitle').value.trim();
+    const desc = document.getElementById('uploadDesc').value.trim();
+    let finalText = uploadedText;
+    if (title) finalText = '【' + title + '】\n' + (desc ? desc + '\n\n' : '\n') + finalText;
+    if (selectedTags.size) finalText = '题材: ' + [...selectedTags].join('/') + '\n' + finalText;
+    if (input) { input.value = finalText; input.focus(); }
+    closeToolModal();
+    showNotification('已导入「' + title + '」(' + uploadedText.length + ' 字) 到输入框', 'success');
+  });
+  document.getElementById('btnUploadCancel').addEventListener('click', closeToolModal);
+}
+
+function readUploadFile(file, textarea) {
+  if (file.size > 10 * 1024 * 1024) { showNotification('文件过大（最大 10MB）', 'warning'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    textarea.value = e.target.result;
+    document.getElementById('uploadCharCount').textContent = e.target.result.length;
+    showNotification('已读取文件: ' + file.name, 'success');
+  };
+  reader.onerror = function() { showNotification('文件读取失败', 'warning'); };
+  reader.readAsText(file);
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ===== 工具2: 讨论思维导图（增强版） =====
+function toolMindmap() {
+  if (!store.currentResults || !store.currentResults.results) {
+    showNotification('请先完成一次圆桌讨论', 'warning');
+    return;
+  }
+  const results = store.currentResults.results.filter(r => r.success);
+  if (!results.length) { showNotification('没有可用的讨论结果', 'warning'); return; }
+
+  const topic = store.currentResults.topic || '小说方案';
+  const nodes = results.map(r => {
+    const content = r.content || '';
+    const lines = content.split('\n').filter(l => l.trim());
+    const keyPoints = [];
+    for (let i = 0; i < lines.length && keyPoints.length < 4; i++) {
+      const line = lines[i].replace(/^[#*\-\d.]+\s*/, '').trim();
+      if (line.length > 5 && line.length < 80) keyPoints.push(line);
+    }
+    if (!keyPoints.length) keyPoints.push(content.slice(0, 50) + '...');
+    return { name: r.expert.name, emoji: r.expert.emoji, points: keyPoints, id: r.expert.id };
+  });
+
+  // Build interactive HTML mindmap (not just SVG)
+  const mindmapHtml = buildInteractiveMindmap(topic, nodes);
+
+  const body = `
+    <div class="tool-mindmap-content">
+      <p class="tool-desc">基于当前讨论结果生成的思维导图 · 点击节点展开/折叠详情</p>
+      <div class="mindmap-toolbar">
+        <button class="mm-tb-btn active" data-layout="radial" title="放射布局">🎯 放射</button>
+        <button class="mm-tb-btn" data-layout="tree" title="树形布局">🌳 树形</button>
+        <button class="mm-tb-btn" data-layout="list" title="列表布局">📋 列表</button>
+      </div>
+      <div class="mindmap-container" id="mindmapContainer">${mindmapHtml}</div>
+    </div>
+  `;
+  const footer = `
+    <button class="btn-entry primary" id="btnMindmapExportPng">导出 PNG</button>
+    <button class="btn-entry secondary" id="btnMindmapExportSvg">导出 SVG</button>
+    <button class="btn-entry secondary" id="btnMindmapClose">关闭</button>
+  `;
+  openToolModal('🧠 讨论思维导图', body, footer);
+
+  // Layout toggle
+  document.querySelectorAll('.mm-tb-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.mm-tb-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      const layout = this.dataset.layout;
+      const container = document.getElementById('mindmapContainer');
+      if (layout === 'radial') container.innerHTML = buildInteractiveMindmap(topic, nodes);
+      else if (layout === 'tree') container.innerHTML = buildTreeMindmap(topic, nodes);
+      else container.innerHTML = buildListMindmap(topic, nodes);
+      bindMindmapEvents();
+    });
+  });
+
+  bindMindmapEvents();
+
+  document.getElementById('btnMindmapExportPng').addEventListener('click', () => exportMindmapAs('png'));
+  document.getElementById('btnMindmapExportSvg').addEventListener('click', () => exportMindmapAs('svg'));
+  document.getElementById('btnMindmapClose').addEventListener('click', closeToolModal);
+}
+
+function buildInteractiveMindmap(topic, nodes) {
+  const svgWidth = 900;
+  const svgHeight = 500;
+  const centerX = svgWidth / 2;
+  const centerY = svgHeight / 2;
+  const radius = 180;
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" class="mindmap-svg" id="mindmapSvg">`;
+  svg += `<defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+
+  // Central topic node
+  svg += `<circle cx="${centerX}" cy="${centerY}" r="50" fill="var(--primary)" opacity="0.9" filter="url(#glow)"/>`;
+  svg += `<text x="${centerX}" y="${centerY + 5}" text-anchor="middle" fill="#fff" font-size="13" font-weight="600">${escapeHtml(topic.slice(0, 10))}</text>`;
+
+  nodes.forEach((node, i) => {
+    const angle = (2 * Math.PI * i / nodes.length) - Math.PI / 2;
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+
+    // Connection line (curved)
+    const cpx = centerX + (radius * 0.5) * Math.cos(angle);
+    const cpy = centerY + (radius * 0.5) * Math.sin(angle);
+    svg += `<path d="M${centerX},${centerY} Q${cpx},${cpy} ${x},${y}" fill="none" stroke="var(--primary-light)" stroke-width="2" opacity="0.4"/>`;
+
+    // Expert node
+    svg += `<g class="mm-node" data-expert="${i}" style="cursor:pointer">`;
+    svg += `<circle cx="${x}" cy="${y}" r="32" fill="var(--surface)" stroke="var(--primary-light)" stroke-width="2"/>`;
+    svg += `<text x="${x}" y="${y - 5}" text-anchor="middle" font-size="16">${node.emoji}</text>`;
+    svg += `<text x="${x}" y="${y + 14}" text-anchor="middle" fill="var(--text-primary)" font-size="10" font-weight="500">${escapeHtml(node.name)}</text>`;
+    svg += `</g>`;
+
+    // Key points (initially hidden, shown on click)
+    node.points.forEach((pt, j) => {
+      const ptAngle = angle + (j - (node.points.length - 1) / 2) * 0.2;
+      const ptRadius = radius + 80 + j * 25;
+      const px = centerX + ptRadius * Math.cos(ptAngle);
+      const py = centerY + ptRadius * Math.sin(ptAngle);
+      svg += `<g class="mm-point hidden" data-expert="${i}">`;
+      svg += `<line x1="${x}" y1="${y}" x2="${px}" y2="${py}" stroke="var(--border)" stroke-width="1" opacity="0.5"/>`;
+      svg += `<rect x="${px - 60}" y="${py - 10}" width="120" height="20" rx="10" fill="var(--surface-hover)" stroke="var(--border)" stroke-width="0.5"/>`;
+      svg += `<text x="${px}" y="${py + 4}" text-anchor="middle" fill="var(--text-secondary)" font-size="9">${escapeHtml(pt.slice(0, 14))}</text>`;
+      svg += `</g>`;
+    });
+  });
+  svg += '</svg>';
+  return svg;
+}
+
+function buildTreeMindmap(topic, nodes) {
+  let html = '<div class="mm-tree">';
+  html += '<div class="mm-tree-root"><span class="mm-tree-node root">' + escapeHtml(topic) + '</span></div>';
+  html += '<div class="mm-tree-branches">';
+  nodes.forEach(node => {
+    html += '<div class="mm-tree-branch">';
+    html += '<div class="mm-tree-expert"><span class="mm-tree-node expert">' + node.emoji + ' ' + escapeHtml(node.name) + '</span></div>';
+    html += '<div class="mm-tree-points">';
+    node.points.forEach(pt => {
+      html += '<div class="mm-tree-point"><span class="mm-tree-node point">' + escapeHtml(pt.slice(0, 30)) + '</span></div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function buildListMindmap(topic, nodes) {
+  let html = '<div class="mm-list">';
+  html += '<div class="mm-list-topic"><h3>' + escapeHtml(topic) + '</h3></div>';
+  nodes.forEach(node => {
+    html += '<div class="mm-list-expert">';
+    html += '<div class="mm-list-header">' + node.emoji + ' <strong>' + escapeHtml(node.name) + '</strong></div>';
+    html += '<ul class="mm-list-points">';
+    node.points.forEach(pt => { html += '<li>' + escapeHtml(pt) + '</li>'; });
+    html += '</ul></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function bindMindmapEvents() {
+  document.querySelectorAll('.mm-node').forEach(node => {
+    node.addEventListener('click', function() {
+      const idx = this.dataset.expert;
+      const points = document.querySelectorAll('.mm-point[data-expert="' + idx + '"]');
+      const isHidden = points[0]?.classList.contains('hidden');
+      points.forEach(p => p.classList.toggle('hidden', !isHidden));
+      this.querySelector('circle').setAttribute('stroke-width', isHidden ? '3' : '2');
+    });
+  });
+}
+
+function exportMindmapAs(format) {
+  const svgEl = document.getElementById('mindmapSvg');
+  if (!svgEl) {
+    // For tree/list layout, export as text
+    const container = document.getElementById('mindmapContainer');
+    const text = container?.innerText || '';
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'mindmap.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotification('已导出为文本', 'success');
+    return;
+  }
+
+  if (format === 'svg') {
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = 'roundtable_mindmap_' + new Date().toISOString().slice(0, 10) + '.svg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotification('思维导图已导出为 SVG', 'success');
+  } else {
+    // PNG export via canvas
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const canvas = document.createElement('canvas');
+    canvas.width = 1800; canvas.height = 1000;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = function() {
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url;
+        a.download = 'roundtable_mindmap_' + new Date().toISOString().slice(0, 10) + '.png';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showNotification('思维导图已导出为 PNG', 'success');
+      }, 'image/png');
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  }
+}
+
+// ===== 工具3: 小说草稿下载（增强版） =====
+function toolDownload() {
+  if (!store.currentResults || !store.currentResults.results) {
+    showNotification('请先完成一次圆桌讨论', 'warning');
+    return;
+  }
+  const results = store.currentResults.results;
+  const topic = store.currentResults.topic || '未命名';
+  const successResults = results.filter(r => r.success);
+  if (!successResults.length) { showNotification('没有可导出的讨论内容', 'warning'); return; }
+
+  const body = `
+    <div class="tool-download-content">
+      <div class="tool-steps">
+        <div class="tool-step active" data-step="1"><span class="step-num">1</span><span class="step-text">选择格式</span></div>
+        <div class="tool-step" data-step="2"><span class="step-num">2</span><span class="step-text">内容配置</span></div>
+        <div class="tool-step" data-step="3"><span class="step-num">3</span><span class="step-text">预览下载</span></div>
+      </div>
+      <div class="tool-step-panels">
+        <div class="step-panel active" id="dlStep1">
+          <p class="tool-desc">选择导出格式</p>
+          <div class="download-options">
+            <label class="download-option active">
+              <input type="radio" name="dlFormat" value="markdown" checked/>
+              <div class="do-icon">📝</div>
+              <div class="do-info"><h4>Markdown</h4><p>完整讨论记录，适合二次编辑和发布</p></div>
+            </label>
+            <label class="download-option">
+              <input type="radio" name="dlFormat" value="txt"/>
+              <div class="do-icon">📄</div>
+              <div class="do-info"><h4>纯文本 TXT</h4><p>去除格式标记，适合复制粘贴</p></div>
+            </label>
+            <label class="download-option">
+              <input type="radio" name="dlFormat" value="json"/>
+              <div class="do-icon">📦</div>
+              <div class="do-info"><h4>JSON 数据</h4><p>结构化数据，适合程序处理和二次开发</p></div>
+            </label>
+            <label class="download-option">
+              <input type="radio" name="dlFormat" value="html"/>
+              <div class="do-icon">🌐</div>
+              <div class="do-info"><h4>HTML 网页</h4><p>带样式的网页文件，可直接在浏览器打开</p></div>
+            </label>
+          </div>
+        </div>
+        <div class="step-panel" id="dlStep2">
+          <p class="tool-desc">配置导出内容</p>
+          <div class="dl-config-section">
+            <h4>📋 内容范围</h4>
+            <div class="dl-checkboxes">
+              <label class="dl-check"><input type="checkbox" id="dlIncludeAll" checked/><span>包含所有专家评估</span></label>
+              <label class="dl-check"><input type="checkbox" id="dlIncludeMeta" checked/><span>包含元信息（模型、耗时、Token）</span></label>
+              <label class="dl-check"><input type="checkbox" id="dlIncludeSummary" checked/><span>生成讨论摘要</span></label>
+              <label class="dl-check"><input type="checkbox" id="dlIncludeTimeline"/><span>包含时间线</span></label>
+            </div>
+          </div>
+          <div class="dl-config-section">
+            <h4>🎨 文档结构</h4>
+            <div class="dl-templates">
+              <div class="dl-template active" data-tpl="full"><span class="dlt-icon">📖</span><span class="dlt-name">完整报告</span><span class="dlt-desc">包含封面、目录、正文</span></div>
+              <div class="dl-template" data-tpl="compact"><span class="dlt-icon">📋</span><span class="dlt-name">精简版</span><span class="dlt-desc">仅核心观点和建议</span></div>
+              <div class="dl-template" data-tpl="outline"><span class="dlt-icon">📐</span><span class="dlt-name">大纲模式</span><span class="dlt-desc">层级结构化要点</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="step-panel" id="dlStep3">
+          <p class="tool-desc">预览导出内容</p>
+          <div class="dl-preview" id="dlPreview"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  const footer = `
+    <button class="btn-entry secondary" id="btnDlPrev" style="display:none">上一步</button>
+    <button class="btn-entry primary" id="btnDlNext">下一步</button>
+    <button class="btn-entry primary" id="btnDlConfirm" style="display:none">⬇ 下载文件</button>
+    <button class="btn-entry secondary" id="btnDlCancel">取消</button>
+  `;
+  openToolModal('📥 小说草稿下载', body, footer);
+
+  let dlStep = 1;
+  let selectedTemplate = 'full';
+
+  function goToDlStep(step) {
+    dlStep = step;
+    document.querySelectorAll('.tool-download-content .tool-step').forEach(s => {
+      const sn = parseInt(s.dataset.step);
+      s.classList.toggle('active', sn === step);
+      s.classList.toggle('done', sn < step);
+    });
+    document.querySelectorAll('.tool-download-content .step-panel').forEach((p, i) => p.classList.toggle('active', i === step - 1));
+    document.getElementById('btnDlPrev').style.display = step > 1 ? '' : 'none';
+    document.getElementById('btnDlNext').style.display = step < 3 ? '' : 'none';
+    document.getElementById('btnDlConfirm').style.display = step === 3 ? '' : 'none';
+    if (step === 3) renderDlPreview();
+  }
+
+  function renderDlPreview() {
+    const format = document.querySelector('input[name="dlFormat"]:checked').value;
+    const preview = document.getElementById('dlPreview');
+    const content = generateExportContent(format, topic, results, selectedTemplate);
+    const previewText = content.slice(0, 800) + (content.length > 800 ? '\n\n... (预览截断)' : '');
+    preview.innerHTML = '<pre class="dl-preview-code">' + escapeHtml(previewText) + '</pre>';
+  }
+
+  // Radio style toggle
+  document.querySelectorAll('.download-option input[name="dlFormat"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      document.querySelectorAll('.download-option').forEach(o => o.classList.remove('active'));
+      this.closest('.download-option').classList.add('active');
+    });
+  });
+
+  // Template toggle
+  document.querySelectorAll('.dl-template').forEach(tpl => {
+    tpl.addEventListener('click', function() {
+      document.querySelectorAll('.dl-template').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      selectedTemplate = this.dataset.tpl;
+    });
+  });
+
+  document.getElementById('btnDlNext').addEventListener('click', function() { goToDlStep(dlStep + 1); });
+  document.getElementById('btnDlPrev').addEventListener('click', function() { goToDlStep(dlStep - 1); });
+
+  document.getElementById('btnDlConfirm').addEventListener('click', function() {
+    const format = document.querySelector('input[name="dlFormat"]:checked').value;
+    const includeMeta = document.getElementById('dlIncludeMeta').checked;
+    executeDownload(format, topic, results, includeMeta, selectedTemplate);
+    closeToolModal();
+  });
+  document.getElementById('btnDlCancel').addEventListener('click', closeToolModal);
+}
+
+function generateExportContent(format, topic, results, template) {
+  const timestamp = new Date().toLocaleString('zh-CN');
+  const successResults = results.filter(r => r.success);
+
+  if (format === 'markdown') {
+    let md = '';
+    if (template === 'full') {
+      md += '# 🎭 小说圆桌讨论报告\n\n';
+      md += '> **主题**: ' + topic + '  \n';
+      md += '> **时间**: ' + timestamp + '  \n';
+      md += '> **专家数**: ' + successResults.length + ' 位  \n\n';
+      md += '---\n\n## 📋 目录\n\n';
+      successResults.forEach((r, i) => { md += (i + 1) + '. ' + r.expert.emoji + ' ' + r.expert.name + '\n'; });
+      md += '\n---\n\n';
+    } else if (template === 'outline') {
+      md += '# ' + topic + ' - 讨论要点\n\n';
+    }
+    successResults.forEach(r => {
+      md += '## ' + r.expert.emoji + ' ' + r.expert.name + '\n\n';
+      if (template === 'compact') {
+        const lines = (r.content || '').split('\n').filter(l => l.trim()).slice(0, 5);
+        md += lines.join('\n') + '\n\n';
+      } else {
+        md += (r.content || '') + '\n\n';
+      }
+      if (template === 'full' && r.modelInfo) {
+        md += '*模型: ' + r.modelInfo.name + ' | 耗时: ' + (r.elapsed || '?') + 's*\n\n';
+      }
+      md += '---\n\n';
+    });
+    return md;
+  } else if (format === 'txt') {
+    let txt = '小说圆桌讨论 - ' + topic + '\n时间：' + timestamp + '\n' + '='.repeat(40) + '\n\n';
+    successResults.forEach(r => {
+      txt += '【' + r.expert.emoji + ' ' + r.expert.name + '】\n';
+      txt += (r.content || '') + '\n\n';
+    });
+    return txt;
+  } else if (format === 'json') {
+    return JSON.stringify({
+      topic, timestamp, template,
+      totalTime: store.currentResults.totalTime,
+      experts: results.map(r => ({
+        name: r.expert ? r.expert.name : '未知',
+        id: r.expert ? r.expert.id : '',
+        model: r.modelInfo ? r.modelInfo.name : r.modelId,
+        success: r.success,
+        content: r.success ? r.content : null,
+        error: r.success ? null : r.error,
+        elapsed: r.elapsed || null
+      }))
+    }, null, 2);
+  } else {
+    // HTML
+    let html = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>' + escapeHtml(topic) + ' - 圆桌讨论</title>';
+    html += '<style>body{font-family:system-ui,sans-serif;max-width:800px;margin:0 auto;padding:40px 20px;background:#fafafa;color:#333}';
+    html += 'h1{color:#6c5ce7;border-bottom:2px solid #6c5ce7;padding-bottom:12px}';
+    html += '.expert{margin:24px 0;padding:20px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}';
+    html += '.expert h2{font-size:18px;margin-bottom:12px}.meta{font-size:12px;color:#888;margin-top:12px}</style></head><body>';
+    html += '<h1>' + escapeHtml(topic) + '</h1><p>生成时间: ' + timestamp + '</p>';
+    successResults.forEach(r => {
+      html += '<div class="expert"><h2>' + r.expert.emoji + ' ' + escapeHtml(r.expert.name) + '</h2>';
+      html += '<div>' + (r.content || '').replace(/\n/g, '<br>') + '</div>';
+      if (r.modelInfo) html += '<p class="meta">模型: ' + escapeHtml(r.modelInfo.name) + ' | 耗时: ' + (r.elapsed || '?') + 's</p>';
+      html += '</div>';
+    });
+    html += '</body></html>';
+    return html;
+  }
+}
+
+function executeDownload(format, topic, results, includeMeta, template) {
+  const content = generateExportContent(format, topic, results, template);
+  const extMap = { markdown: '.md', txt: '.txt', json: '.json', html: '.html' };
+  const mimeMap = { markdown: 'text/markdown', txt: 'text/plain', json: 'application/json', html: 'text/html' };
+  const filename = 'roundtable_' + new Date().toISOString().slice(0, 10) + extMap[format];
+  const blob = new Blob([content], { type: mimeMap[format] + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showNotification('已下载: ' + filename, 'success');
+}
+
+// ===== 工具4: 智能分析（增强版） =====
+function toolAnalyze() {
+  if (!store.currentResults || !store.currentResults.results) {
+    showNotification('请先完成一次圆桌讨论', 'warning');
+    return;
+  }
+  const results = store.currentResults.results.filter(r => r.success);
+  if (!results.length) { showNotification('没有可分析的讨论结果', 'warning'); return; }
+
+  const analysis = performAnalysis(results);
+
+  const body = `
+    <div class="tool-analyze-content">
+      <p class="tool-desc">基于 ${results.length} 位专家的评估结果进行多维度智能分析</p>
+
+      <div class="analyze-tabs">
+        <button class="atab active" data-tab="overview">📊 总览</button>
+        <button class="atab" data-tab="keywords">🔑 关键词</button>
+        <button class="atab" data-tab="consensus">🤝 共识与分歧</button>
+        <button class="atab" data-tab="radar">🎯 雷达图</button>
+        <button class="atab" data-tab="sentiment">💭 情感分析</button>
+      </div>
+
+      <div class="analyze-tab-panels">
+        <div class="atab-panel active" data-panel="overview">
+          <div class="analyze-grid two-col">
+            <div class="analyze-card">
+              <h4>📊 基础统计</h4>
+              <div class="ac-stats">
+                <div class="ac-stat"><span class="ac-num">${results.length}</span><span class="ac-label">完成评估</span></div>
+                <div class="ac-stat"><span class="ac-num">${analysis.avgLength}</span><span class="ac-label">平均字数</span></div>
+                <div class="ac-stat"><span class="ac-num">${analysis.totalTime}s</span><span class="ac-label">总耗时</span></div>
+                <div class="ac-stat"><span class="ac-num">${analysis.keywords.length}</span><span class="ac-label">关键词数</span></div>
+              </div>
+            </div>
+            <div class="analyze-card">
+              <h4>⚡ 各专家字数对比</h4>
+              <div class="ac-bars">${results.map(r => {
+                const len = (r.content || '').length;
+                const pct = Math.min(100, Math.round(len / analysis.maxLength * 100));
+                return '<div class="ac-bar-row"><span class="ac-bar-name">' + r.expert.emoji + ' ' + r.expert.name + '</span><div class="ac-bar-track"><div class="ac-bar-fill" style="width:' + pct + '%"></div></div><span class="ac-bar-val">' + len + '字</span></div>';
+              }).join('')}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="atab-panel" data-panel="keywords">
+          <div class="analyze-card">
+            <h4>🔑 高频关键词 TOP 15</h4>
+            <div class="ac-keyword-cloud">${analysis.keywords.map((k, i) => {
+              const size = Math.max(12, 24 - i * 1.5);
+              const opacity = Math.max(0.5, 1 - i * 0.04);
+              return '<span class="ac-kw-cloud" style="font-size:' + size + 'px;opacity:' + opacity + '">' + k.word + '<em>' + k.count + '</em></span>';
+            }).join('')}</div>
+          </div>
+          <div class="analyze-card">
+            <h4>📈 关键词频率分布</h4>
+            <div class="ac-bars">${analysis.keywords.slice(0, 10).map(k => {
+              const pct = Math.round(k.count / analysis.keywords[0].count * 100);
+              return '<div class="ac-bar-row"><span class="ac-bar-name">' + k.word + '</span><div class="ac-bar-track"><div class="ac-bar-fill accent" style="width:' + pct + '%"></div></div><span class="ac-bar-val">' + k.count + '次</span></div>';
+            }).join('')}</div>
+          </div>
+        </div>
+
+        <div class="atab-panel" data-panel="consensus">
+          <div class="analyze-grid two-col">
+            <div class="analyze-card">
+              <h4>✅ 共识点（60%+专家提及）</h4>
+              <div class="ac-consensus">${analysis.consensus.length ? analysis.consensus.map(c => '<div class="ac-consensus-item"><span class="aci-dot green"></span>' + c + '</div>').join('') : '<p class="ac-empty">未检测到明显共识</p>'}</div>
+            </div>
+            <div class="analyze-card">
+              <h4>⚔️ 观点分歧</h4>
+              <div class="ac-consensus">${analysis.divergence.length ? analysis.divergence.map(d => '<div class="ac-consensus-item"><span class="aci-dot red"></span>' + d + '</div>').join('') : '<p class="ac-empty">未检测到明显分歧</p>'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="atab-panel" data-panel="radar">
+          <div class="analyze-card">
+            <h4>🎯 专家评估维度雷达图</h4>
+            <p class="tool-desc" style="margin-bottom:12px">基于内容分析各专家在不同维度的关注度</p>
+            <div class="radar-chart-container">${buildRadarChart(results, analysis)}</div>
+          </div>
+        </div>
+
+        <div class="atab-panel" data-panel="sentiment">
+          <div class="analyze-card">
+            <h4>💭 情感倾向分析</h4>
+            <div class="sentiment-grid">${results.map(r => {
+              const sent = analyzeSentiment(r.content || '');
+              return '<div class="sentiment-row"><span class="sr-name">' + r.expert.emoji + ' ' + r.expert.name + '</span><div class="sr-bar"><div class="sr-pos" style="width:' + sent.positive + '%"></div><div class="sr-neu" style="width:' + sent.neutral + '%"></div><div class="sr-neg" style="width:' + sent.negative + '%"></div></div><span class="sr-label">' + sent.label + '</span></div>';
+            }).join('')}</div>
+            <div class="sentiment-legend">
+              <span><span class="sl-dot green"></span>积极</span>
+              <span><span class="sl-dot gray"></span>中性</span>
+              <span><span class="sl-dot red"></span>消极/批评</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  const footer = '<button class="btn-entry primary" id="btnAnalyzeExport">导出分析报告</button><button class="btn-entry secondary" id="btnAnalyzeClose">关闭</button>';
+  openToolModal('📊 智能分析', body, footer);
+
+  // Tab switching
+  document.querySelectorAll('.atab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.atab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      const panel = this.dataset.tab;
+      document.querySelectorAll('.atab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === panel));
+    });
+  });
+
+  document.getElementById('btnAnalyzeExport').addEventListener('click', function() {
+    exportAnalysisReport(analysis, results);
+  });
+  document.getElementById('btnAnalyzeClose').addEventListener('click', closeToolModal);
+}
+
+function performAnalysis(results) {
+  const lengths = results.map(r => (r.content || '').length);
+  const avgLength = Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
+  const maxLength = Math.max(...lengths);
+  const totalTime = store.currentResults.totalTime || '?';
+
+  // Keyword extraction
+  const allText = results.map(r => r.content || '').join(' ');
+  const stopWords = new Set(['的', '了', '是', '在', '和', '有', '不', '这', '我', '你', '他', '她', '它', '们', '也', '就', '都', '而', '及', '与', '或', '但', '如果', '因为', '所以', '可以', '需要', '应该', '一个', '一些', '这个', '那个', '什么', '怎么', '为什么', '没有', '已经', '可能', '比较', '非常', '通过', '进行', '以及', '对于', '关于', '其中', '之间', '方面', '部分', '问题', '建议', '内容', '方式', '情况', '作者', '读者', '小说', '故事', '角色', '人物', '设定', '剧情', '能够', '这样', '那样', '然后', '但是', '虽然', '不过', '或者', '如何', '怎样']);
+  const wordMap = {};
+  const phrases = allText.match(/[\u4e00-\u9fa5]{2,4}/g) || [];
+  phrases.forEach(w => { if (!stopWords.has(w)) wordMap[w] = (wordMap[w] || 0) + 1; });
+  const keywords = Object.entries(wordMap)
+    .filter(([, c]) => c >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([word, count]) => ({ word, count }));
+
+  // Consensus detection
+  const threshold = Math.ceil(results.length * 0.6);
+  const expertWords = results.map(r => {
+    const words = (r.content || '').match(/[\u4e00-\u9fa5]{2,4}/g) || [];
+    return new Set(words.filter(w => !stopWords.has(w)));
+  });
+  const consensusWords = [];
+  const checked = new Set();
+  expertWords.forEach(ws => {
+    ws.forEach(w => {
+      if (checked.has(w)) return;
+      checked.add(w);
+      const count = expertWords.filter(ew => ew.has(w)).length;
+      if (count >= threshold && w.length >= 2) consensusWords.push({ word: w, count });
+    });
+  });
+  consensusWords.sort((a, b) => b.count - a.count);
+  const consensus = consensusWords.slice(0, 6).map(c => '「' + c.word + '」被 ' + c.count + '/' + results.length + ' 位专家提及');
+
+  // Divergence detection (words appearing in only 1-2 experts but with high frequency)
+  const divergenceWords = [];
+  const divChecked = new Set();
+  expertWords.forEach((ws, idx) => {
+    ws.forEach(w => {
+      if (divChecked.has(w)) return;
+      divChecked.add(w);
+      const count = expertWords.filter(ew => ew.has(w)).length;
+      if (count === 1 && (wordMap[w] || 0) >= 3) {
+        divergenceWords.push({ word: w, expert: results[idx].expert.name, freq: wordMap[w] });
+      }
+    });
+  });
+  divergenceWords.sort((a, b) => b.freq - a.freq);
+  const divergence = divergenceWords.slice(0, 5).map(d => '「' + d.word + '」仅 ' + d.expert + ' 重点关注 (' + d.freq + '次)');
+
+  // Dimension scores for radar
+  const dimensions = ['创意性', '逻辑性', '市场性', '文学性', '可行性'];
+  const dimensionKeywords = {
+    '创意性': ['创意', '新颖', '独特', '创新', '想象', '灵感', '原创', '突破'],
+    '逻辑性': ['逻辑', '合理', '自洽', '矛盾', '漏洞', '因果', '推理', '严谨'],
+    '市场性': ['市场', '读者', '受众', '流量', '热门', '商业', '变现', '平台'],
+    '文学性': ['文笔', '语言', '修辞', '意境', '美感', '文学', '风格', '叙事'],
+    '可行性': ['可行', '执行', '落地', '实现', '难度', '篇幅', '节奏', '结构']
+  };
+  const radarData = results.map(r => {
+    const text = r.content || '';
+    const scores = dimensions.map(dim => {
+      const kws = dimensionKeywords[dim];
+      let score = 0;
+      kws.forEach(kw => { const matches = text.match(new RegExp(kw, 'g')); if (matches) score += matches.length; });
+      return Math.min(100, score * 15);
+    });
+    return { name: r.expert.name, emoji: r.expert.emoji, scores };
+  });
+
+  return { avgLength, maxLength, totalTime, keywords, consensus, divergence, dimensions, radarData };
+}
+
+function buildRadarChart(results, analysis) {
+  const { dimensions, radarData } = analysis;
+  const size = 300;
+  const center = size / 2;
+  const radius = 120;
+  const levels = 5;
+
+  let svg = `<svg viewBox="0 0 ${size} ${size}" class="radar-svg">`;
+
+  // Grid
+  for (let l = 1; l <= levels; l++) {
+    const r = radius * l / levels;
+    let points = '';
+    dimensions.forEach((_, i) => {
+      const angle = (2 * Math.PI * i / dimensions.length) - Math.PI / 2;
+      points += (center + r * Math.cos(angle)) + ',' + (center + r * Math.sin(angle)) + ' ';
+    });
+    svg += `<polygon points="${points}" fill="none" stroke="var(--border)" stroke-width="0.5" opacity="0.5"/>`;
+  }
+
+  // Axes and labels
+  dimensions.forEach((dim, i) => {
+    const angle = (2 * Math.PI * i / dimensions.length) - Math.PI / 2;
+    const x = center + radius * Math.cos(angle);
+    const y = center + radius * Math.sin(angle);
+    svg += `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`;
+    const lx = center + (radius + 20) * Math.cos(angle);
+    const ly = center + (radius + 20) * Math.sin(angle);
+    svg += `<text x="${lx}" y="${ly + 4}" text-anchor="middle" fill="var(--text-secondary)" font-size="10">${dim}</text>`;
+  });
+
+  // Data polygons (show top 4 experts)
+  const colors = ['rgba(124,108,240,0.6)', 'rgba(0,206,201,0.6)', 'rgba(253,203,110,0.6)', 'rgba(225,112,85,0.6)'];
+  radarData.slice(0, 4).forEach((expert, ei) => {
+    let points = '';
+    expert.scores.forEach((score, i) => {
+      const angle = (2 * Math.PI * i / dimensions.length) - Math.PI / 2;
+      const r = radius * score / 100;
+      points += (center + r * Math.cos(angle)) + ',' + (center + r * Math.sin(angle)) + ' ';
+    });
+    svg += `<polygon points="${points}" fill="${colors[ei]}" fill-opacity="0.2" stroke="${colors[ei]}" stroke-width="1.5"/>`;
+  });
+
+  svg += '</svg>';
+
+  // Legend
+  let legend = '<div class="radar-legend">';
+  radarData.slice(0, 4).forEach((expert, ei) => {
+    legend += '<span class="rl-item"><span class="rl-dot" style="background:' + colors[ei] + '"></span>' + expert.emoji + ' ' + expert.name + '</span>';
+  });
+  legend += '</div>';
+
+  return svg + legend;
+}
+
+function analyzeSentiment(text) {
+  const posWords = ['优秀', '精彩', '出色', '巧妙', '独特', '吸引', '有趣', '成功', '亮点', '推荐', '赞', '好', '强', '妙', '佳', '优', '棒', '不错', '很好', '非常好', '值得', '潜力'];
+  const negWords = ['问题', '不足', '缺乏', '薄弱', '风险', '困难', '矛盾', '漏洞', '单薄', '老套', '俗套', '平庸', '不够', '欠缺', '需要改进', '建议修改', '避免', '注意'];
+
+  let posCount = 0, negCount = 0;
+  posWords.forEach(w => { const m = text.match(new RegExp(w, 'g')); if (m) posCount += m.length; });
+  negWords.forEach(w => { const m = text.match(new RegExp(w, 'g')); if (m) negCount += m.length; });
+
+  const total = posCount + negCount || 1;
+  const positive = Math.round(posCount / total * 100);
+  const negative = Math.round(negCount / total * 100);
+  const neutral = 100 - positive - negative;
+
+  let label = '中性';
+  if (positive > 60) label = '积极';
+  else if (negative > 60) label = '批评';
+  else if (positive > negative + 20) label = '偏积极';
+  else if (negative > positive + 20) label = '偏批评';
+
+  return { positive, negative, neutral: Math.max(0, neutral), label };
+}
+
+function exportAnalysisReport(analysis, results) {
+  let report = '# 📊 智能分析报告\n\n';
+  report += '生成时间: ' + new Date().toLocaleString('zh-CN') + '\n\n';
+  report += '## 基础统计\n\n';
+  report += '- 完成评估: ' + results.length + ' 位专家\n';
+  report += '- 平均字数: ' + analysis.avgLength + '\n';
+  report += '- 总耗时: ' + analysis.totalTime + 's\n\n';
+  report += '## 高频关键词\n\n';
+  analysis.keywords.forEach(k => { report += '- ' + k.word + ' (' + k.count + '次)\n'; });
+  report += '\n## 共识点\n\n';
+  analysis.consensus.forEach(c => { report += '- ' + c + '\n'; });
+  report += '\n## 观点分歧\n\n';
+  analysis.divergence.forEach(d => { report += '- ' + d + '\n'; });
+  report += '\n## 情感分析\n\n';
+  results.forEach(r => {
+    const sent = analyzeSentiment(r.content || '');
+    report += '- ' + r.expert.emoji + ' ' + r.expert.name + ': ' + sent.label + ' (积极' + sent.positive + '% / 中性' + sent.neutral + '% / 消极' + sent.negative + '%)\n';
+  });
+
+  const blob = new Blob([report], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = 'analysis_report_' + new Date().toISOString().slice(0, 10) + '.md';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showNotification('分析报告已导出', 'success');
+}
 
 })();

@@ -28,10 +28,10 @@
       </div>
       <div class="sidebar-tools">
         <h3>功能工具</h3>
-        <div class="tool-item coming-soon" data-action="upload"><div class="tool-icon">📄</div><div class="tool-info"><h4>上传大纲/草稿</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
-        <div class="tool-item coming-soon" data-action="mindmap"><div class="tool-icon">🧠</div><div class="tool-info"><h4>讨论思维导图</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
-        <div class="tool-item coming-soon" data-action="download"><div class="tool-icon">📥</div><div class="tool-info"><h4>小说草稿下载</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
-        <div class="tool-item coming-soon" data-action="analyze"><div class="tool-icon">📊</div><div class="tool-info"><h4>智能分析</h4><p>即将推出</p></div><span class="badge-coming">即将推出</span></div>
+        <div class="tool-item" data-action="upload"><div class="tool-icon">📄</div><div class="tool-info"><h4>上传大纲/草稿</h4><p>导入现有文档到工作台</p></div></div>
+        <div class="tool-item" data-action="mindmap"><div class="tool-icon">🧠</div><div class="tool-info"><h4>讨论思维导图</h4><p>可视化讨论脉络</p></div></div>
+        <div class="tool-item" data-action="download"><div class="tool-icon">📥</div><div class="tool-info"><h4>小说草稿下载</h4><p>一键导出多格式文档</p></div></div>
+        <div class="tool-item" data-action="analyze"><div class="tool-icon">📊</div><div class="tool-info"><h4>智能分析</h4><p>多维度统计与可视化</p></div></div>
       </div>
     </aside>
 
@@ -115,7 +115,7 @@
       <!-- Footer -->
       <footer class="footer">
         <div class="footer-content">
-          <p>NovelRoundTable v2.0 - 小说创作 AI 协作平台</p>
+          <p>NovelRoundTable v2.3.0 - 小说创作 AI 协作平台</p>
           <div class="footer-links">
             <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2" target="_blank">GitHub</a>
             <span class="footer-sep">·</span>
@@ -198,6 +198,16 @@
         <button class="btn-save-template" id="btnSaveTemplate" title="保存为常用模板">⭐</button>
         <button class="btn-chat-send" id="btnChatSend">发送</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Tool Modal (Upload / Mindmap / Analyze) -->
+  <div class="modal-overlay" id="toolModalOverlay">
+    <div class="modal tool-modal" id="toolModal">
+      <button class="modal-close" id="toolModalClose">&times;</button>
+      <div class="modal-header" id="toolModalHeader"></div>
+      <div class="modal-body" id="toolModalBody"></div>
+      <div class="modal-footer" id="toolModalFooter"></div>
     </div>
   </div>
 
