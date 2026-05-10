@@ -127,6 +127,173 @@ const QUICK_TEMPLATES = [
   }
 ];
 
+// ===== 阶段配置 =====
+const PHASE_CONFIG = {
+  concept: {
+    title: '💡 说出你的创作想法',
+    subtitle: '描述你的创意，9 位专家帮你判断值不值得写',
+    placeholder: '描述你的小说方案，如题材、主角设定、核心冲突...',
+    warningChars: 600,
+    maxChars: 1500,
+    badge: '✅ 内置免费模型，无需配置 API Key 即可开始体验',
+    tipTags: [
+      { label: '🔎 悬疑', tip: '我想写一个现代都市悬疑故事' },
+      { label: '🗡 仙侠', tip: '我想写一个古代仙侠修炼故事' },
+      { label: '💕 言情', tip: '我想写一个甜宠言情故事' },
+      { label: '🚀 科幻', tip: '我想写一个未来科幻故事' }
+    ]
+  },
+  pre: {
+    title: '✍️ 大纲/世界观评审',
+    subtitle: '把大纲或世界观设定交给专家，帮你把结构做扎实',
+    placeholder: '粘贴你的大纲或世界观设定（建议 500-3000 字）...',
+    warningChars: 3000,
+    maxChars: 8000,
+    badge: '📐 适合有大纲初稿的阶段，专家将重点审查结构完整性',
+    tipTags: [
+      { label: '📋 大纲', tip: '以下是我的大纲：\n\n' },
+      { label: '🌍 世界观', tip: '以下是我的世界观设定：\n\n' },
+      { label: '🎭 人物', tip: '以下是我的人物设计：\n\n' },
+      { label: '🏗 结构', tip: '以下是我的故事结构：\n\n' }
+    ]
+  },
+  mid: {
+    title: '📖 章节原文评审',
+    subtitle: '把写好的章节原文交给专家，找问题、改到位',
+    placeholder: '粘贴需要评审的章节原文（建议 1000-8000 字）...',
+    warningChars: 8000,
+    maxChars: 20000,
+    badge: '📖 适合已有原文的阶段，对白/文笔/AI味专家将充分发挥',
+    tipTags: [
+      { label: '📄 单章', tip: '以下是本章原文：\n\n' },
+      { label: '💬 对白', tip: '以下是本章原文，请重点检查对白：\n\n' },
+      { label: '✨ 文笔', tip: '以下是本章原文，请重点润色文笔：\n\n' },
+      { label: '🔬 AI味', tip: '以下是本章原文，请重点检测AI味：\n\n' }
+    ]
+  },
+  post: {
+    title: '🔍 全局复盘',
+    subtitle: '输入多章节内容，专家从全局角度找系统性问题',
+    placeholder: '粘贴多章节内容进行全局复盘（建议 2000-15000 字，超出部分将聚焦前段）...',
+    warningChars: 15000,
+    maxChars: 50000,
+    badge: '🔍 适合积累了一定篇幅后的整体检视，连续性审查员和总编辑最能发挥',
+    tipTags: [
+      { label: '📚 全文', tip: '以下是多章节内容：\n\n' },
+      { label: '👤 人物', tip: '以下是多章节内容，请重点检查人物一致性：\n\n' },
+      { label: '🎵 节奏', tip: '以下是多章节内容，请重点分析节奏：\n\n' },
+      { label: '🔗 连续性', tip: '以下是多章节内容，请重点扫描连续性问题：\n\n' }
+    ]
+  }
+};
+
+// ===== 各阶段快捷场景卡片 =====
+const PHASE_SCENE_CARDS = {
+  concept: null, // 使用原 QUICK_TEMPLATES
+  pre: [
+    {
+      id: 'outline-review',
+      emoji: '📋',
+      title: '大纲审查',
+      desc: '结构完整性与逻辑自洽检查',
+      prompt: '以下是我的大纲：\n\n',
+      experts: ['plot-architect', 'continuity-checker', 'world-builder']
+    },
+    {
+      id: 'worldview-check',
+      emoji: '🌍',
+      title: '世界观自查',
+      desc: '设定逻辑与规则体系审查',
+      prompt: '以下是我的大纲：\n\n',
+      experts: ['world-builder', 'continuity-checker', 'chief-editor']
+    },
+    {
+      id: 'character-design',
+      emoji: '🎭',
+      title: '人物设计',
+      desc: '角色立体度与动机合理性',
+      prompt: '以下是我的大纲：\n\n',
+      experts: ['character-designer', 'dialogue-expert', 'plot-architect']
+    },
+    {
+      id: 'structure-polish',
+      emoji: '🏗',
+      title: '结构打磨',
+      desc: '三幕结构与节奏设计优化',
+      prompt: '以下是我的大纲：\n\n',
+      experts: ['plot-architect', 'chief-editor', 'continuity-checker']
+    }
+  ],
+  mid: [
+    {
+      id: 'chapter-review',
+      emoji: '📄',
+      title: '单章审稿',
+      desc: '全方位评审章节原文',
+      prompt: '以下是本章原文：\n\n',
+      experts: 'all'
+    },
+    {
+      id: 'dialogue-check',
+      emoji: '💬',
+      title: '对白检查',
+      desc: '对话真实感与角色辨识度',
+      prompt: '以下是本章原文：\n\n',
+      experts: ['dialogue-expert', 'character-designer', 'style-polisher']
+    },
+    {
+      id: 'style-polish',
+      emoji: '✨',
+      title: '文笔润色',
+      desc: '文字表现力与风格提升',
+      prompt: '以下是本章原文：\n\n',
+      experts: ['style-polisher', 'dialogue-expert', 'ai-detector']
+    },
+    {
+      id: 'ai-taste-detect',
+      emoji: '🔬',
+      title: 'AI味检测',
+      desc: '找出AI痕迹并给出人味改写',
+      prompt: '以下是本章原文：\n\n',
+      experts: ['ai-detector', 'style-polisher', 'dialogue-expert']
+    }
+  ],
+  post: [
+    {
+      id: 'full-review',
+      emoji: '📚',
+      title: '全文复盘',
+      desc: '多章节系统性问题全面检视',
+      prompt: '以下是多章节内容：\n\n',
+      experts: 'all'
+    },
+    {
+      id: 'character-consistency',
+      emoji: '👤',
+      title: '人物一致性',
+      desc: '跨章节人物行为与性格一致性',
+      prompt: '以下是多章节内容：\n\n',
+      experts: ['character-designer', 'continuity-checker', 'dialogue-expert']
+    },
+    {
+      id: 'rhythm-analysis',
+      emoji: '🎵',
+      title: '节奏分析',
+      desc: '整体节奏曲线与爽点密度',
+      prompt: '以下是多章节内容：\n\n',
+      experts: ['plot-architect', 'toxic-reader', 'chief-editor']
+    },
+    {
+      id: 'continuity-scan',
+      emoji: '🔗',
+      title: '连续性扫描',
+      desc: '前后矛盾与逻辑漏洞全扫描',
+      prompt: '以下是多章节内容：\n\n',
+      experts: ['continuity-checker', 'world-builder', 'plot-architect']
+    }
+  ]
+};
+
 // ===== 追问区状态 =====
 const followUpState = {
   selectedExpert: 'all', // 'all' 或某个 expert id
@@ -270,7 +437,8 @@ const store = {
   isRoundtableRunning: false,
   currentResults: null,
   chatMessages: [],
-  abortController: null
+  abortController: null,
+  currentPhase: 'concept'
 };
 
 async function runRoundtable(topic, onProgress) {
@@ -398,12 +566,19 @@ document.addEventListener('DOMContentLoaded', function() {
   initParticles();
   initExperts();
   initMaterials();
-  initQuickTemplates();
   initFollowupZone();
   initScrollReveal();
   initEventListeners();
   initSidebar();
   initSessions();
+
+  // Phase Tabs
+  document.getElementById('phaseTabs')?.addEventListener('click', function(e) {
+    const btn = e.target.closest('.phase-tab');
+    if (btn && btn.dataset.phase) switchPhase(btn.dataset.phase);
+  });
+  // 初始化默认阶段（concept），渲染 tip tags + 场景卡片
+  switchPhase('concept');
 
   // 事件委托：处理聊天面板中动态生成的按钮点击
   document.addEventListener('click', function(e) {
@@ -1034,6 +1209,111 @@ function initQuickTemplates() {
   });
 }
 
+// ===== 字数计数（阶段感知） =====
+function updateCharCount() {
+  const input = document.getElementById('creativeInput');
+  const countEl = document.getElementById('creativeCharCount');
+  const warnEl = document.getElementById('charWarningMsg');
+  if (!input || !countEl) return;
+  const len = input.value.length;
+  countEl.textContent = len;
+  const cfg = PHASE_CONFIG[store.currentPhase] || PHASE_CONFIG.concept;
+  // 重置样式
+  countEl.style.color = '';
+  if (warnEl) { warnEl.textContent = ''; warnEl.style.color = ''; }
+  if (len >= cfg.maxChars) {
+    countEl.style.color = 'var(--color-error, #e53e3e)';
+    if (warnEl) { warnEl.textContent = '🚫 已超过本阶段建议上限，超出部分处理效果会下降'; warnEl.style.color = 'var(--color-error, #e53e3e)'; }
+  } else if (len >= cfg.warningChars) {
+    countEl.style.color = '#d97706';
+    if (warnEl) { warnEl.textContent = '⚠️ 输入较长，专家将重点关注前段内容'; warnEl.style.color = '#d97706'; }
+  }
+}
+
+// ===== 渲染阶段 Tip Tags =====
+function renderPhaseTipTags(phase) {
+  const container = document.getElementById('phaseTipTags');
+  if (!container) return;
+  const cfg = PHASE_CONFIG[phase] || PHASE_CONFIG.concept;
+  container.innerHTML = cfg.tipTags.map(t =>
+    `<span class="tip-tag" data-tip="${t.tip.replace(/"/g, '&quot;')}">${t.label}</span>`
+  ).join('');
+  // 重新绑定点击事件
+  container.querySelectorAll('.tip-tag').forEach(tag => {
+    tag.addEventListener('click', function() {
+      container.querySelectorAll('.tip-tag').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      const input = document.getElementById('creativeInput');
+      if (input) { input.value = this.dataset.tip; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); }
+    });
+  });
+}
+
+// ===== 渲染阶段场景卡片 =====
+function renderPhaseSceneCards(phase) {
+  const container = document.getElementById('quickTemplates');
+  if (!container) return;
+  const cards = PHASE_SCENE_CARDS[phase];
+  // concept 阶段使用原 QUICK_TEMPLATES
+  const list = (!cards) ? QUICK_TEMPLATES : cards;
+  container.innerHTML = list.map(t => `
+    <div class="quick-tpl-card" data-tpl-id="${t.id}">
+      <span class="qt-emoji">${t.emoji}</span>
+      <div class="qt-text">
+        <span class="qt-title">${t.title}</span>
+        <span class="qt-desc">${t.desc}</span>
+      </div>
+    </div>
+  `).join('');
+  // 重新绑定点击事件（复用逻辑）
+  container.querySelectorAll('.quick-tpl-card').forEach(card => {
+    card.addEventListener('click', function() {
+      const tplId = this.dataset.tplId;
+      const tpl = list.find(t => t.id === tplId);
+      if (!tpl) return;
+      const input = document.getElementById('creativeInput');
+      if (input) {
+        input.value = tpl.prompt;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+      container.querySelectorAll('.quick-tpl-card').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      const expertNames = tpl.experts === 'all'
+        ? '全部 ' + EXPERTS.length + ' 位专家'
+        : tpl.experts.map(id => { const ex = EXPERTS.find(e => e.id === id); return ex ? ex.emoji + ex.name : id; }).join('、');
+      showNotification('已切换模板：' + tpl.title + ' → ' + expertNames, 'info');
+    });
+  });
+}
+
+// ===== 切换阶段 =====
+function switchPhase(phase) {
+  if (!PHASE_CONFIG[phase]) return;
+  store.currentPhase = phase;
+  const cfg = PHASE_CONFIG[phase];
+  // 更新 Tab 高亮
+  document.querySelectorAll('.phase-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.phase === phase);
+  });
+  // 更新标题/副标题/badge
+  const titleEl = document.getElementById('phaseTitle');
+  const subtitleEl = document.getElementById('phaseSubtitle');
+  const badgeEl = document.getElementById('phaseBadge');
+  if (titleEl) titleEl.textContent = cfg.title;
+  if (subtitleEl) subtitleEl.textContent = cfg.subtitle;
+  if (badgeEl) badgeEl.textContent = cfg.badge;
+  // 更新 placeholder
+  const textarea = document.getElementById('creativeInput');
+  if (textarea) textarea.placeholder = cfg.placeholder;
+  // 渲染 tip tags 和场景卡片
+  renderPhaseTipTags(phase);
+  renderPhaseSceneCards(phase);
+  // 刷新字数状态
+  updateCharCount();
+}
+
 // ===== Follow-up Zone Initialization =====
 function getUserTemplates() {
   const s = localStorage.getItem(STORAGE_KEYS.USER_TEMPLATES);
@@ -1192,10 +1472,7 @@ function initEventListeners() {
   // Submit idea
   document.getElementById('btnSubmitIdea')?.addEventListener('click', submitIdea);
   document.getElementById('creativeInput')?.addEventListener('keydown', function(e) { if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); submitIdea(); } });
-  document.getElementById('creativeInput')?.addEventListener('input', function() {
-    const el = document.getElementById('creativeCharCount');
-    if (el) el.textContent = this.value.length;
-  });
+  document.getElementById('creativeInput')?.addEventListener('input', updateCharCount);
 
   // Chat
   document.getElementById('chatClose')?.addEventListener('click', closeChatPanel);

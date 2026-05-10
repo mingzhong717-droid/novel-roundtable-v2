@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="NovelRoundTable - AI 小说创作协作平台">
   <meta name="twitter:description" content="9 位 AI 创作专家并行评估你的小说方案，全方位助力创作。">
-  <link rel="stylesheet" href="css/style.css?v=2.9.0">
+  <link rel="stylesheet" href="css/style.css?v=3.0.0">
 </head>
 <body>
   <canvas id="particlesCanvas"></canvas>
@@ -65,22 +65,43 @@
       <!-- Creative Input (Primary Focus) -->
       <section class="creative-input-section scroll-reveal">
         <div class="input-container">
+          <!-- Phase Tabs -->
+          <div class="phase-tabs" id="phaseTabs">
+            <button class="phase-tab active" data-phase="concept">
+              <span class="phase-icon">📐</span>
+              <span class="phase-name">方案讨论</span>
+              <span class="phase-desc">创意/设定</span>
+            </button>
+            <button class="phase-tab" data-phase="pre">
+              <span class="phase-icon">✍️</span>
+              <span class="phase-name">创作前</span>
+              <span class="phase-desc">大纲/世界观</span>
+            </button>
+            <button class="phase-tab" data-phase="mid">
+              <span class="phase-icon">📖</span>
+              <span class="phase-name">创作中</span>
+              <span class="phase-desc">章节原文</span>
+            </button>
+            <button class="phase-tab" data-phase="post">
+              <span class="phase-icon">🔍</span>
+              <span class="phase-name">创作后</span>
+              <span class="phase-desc">全局复盘</span>
+            </button>
+          </div>
           <div class="input-header">
-            <h3>💡 说出你的创作想法</h3>
-            <p>描述你想写的故事，9 位 AI 专家将并行给出专业评估</p>
-            <p class="input-header-tip">✅ 内置免费模型，无需配置 API Key 即可开始体验</p>
+            <h3 id="phaseTitle">💡 说出你的创作想法</h3>
+            <p id="phaseSubtitle">描述你想写的故事，9 位 AI 专家将并行给出专业评估</p>
+            <p class="input-header-tip" id="phaseBadge">✅ 内置免费模型，无需配置 API Key 即可开始体验</p>
           </div>
           <div class="input-area">
             <textarea id="creativeInput" placeholder="描述你的小说方案，如题材、主角设定、核心冲突..."></textarea>
-            <div class="input-char-count"><span id="creativeCharCount">0</span> 字</div>
+            <div class="input-char-count">
+              <span id="creativeCharCount">0</span> 字
+              <span id="charWarningMsg" class="char-warning-msg"></span>
+            </div>
             <div class="quick-templates" id="quickTemplates"></div>
             <div class="input-actions">
-              <div class="input-tips">
-                <span class="tip-tag" data-tip="我想写一个现代都市悬疑故事">🔎 悬疑</span>
-                <span class="tip-tag" data-tip="我想写一个古代仙侠修炼故事">🗡 仙侠</span>
-                <span class="tip-tag" data-tip="我想写一个甜宠言情故事">💕 言情</span>
-                <span class="tip-tag" data-tip="我想写一个未来科幻故事">🚀 科幻</span>
-              </div>
+              <div class="input-tips" id="phaseTipTags"></div>
               <button class="btn-submit" id="btnSubmitIdea"><span>⚡</span> 开始圆桌讨论</button>
             </div>
           </div>
@@ -134,13 +155,13 @@
       <!-- Footer -->
       <footer class="footer">
         <div class="footer-content">
-          <p>NovelRoundTable v2.9.1 - 小说创作 AI 协作平台</p>
+          <p>NovelRoundTable v3.0.0 - 小说创作 AI 协作平台</p>
           <div class="footer-links">
             <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2" target="_blank">GitHub</a>
             <span class="footer-sep">·</span>
             <a href="https://github.com/mingzhong717-droid/novel-roundtable-v2/issues" target="_blank">反馈建议</a>
             <span class="footer-sep">·</span>
-            <span class="footer-version">v2.9.1</span>
+            <span class="footer-version">v3.0.0</span>
           </div>
         </div>
       </footer>
@@ -233,6 +254,6 @@
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
-  <script src="js/main.js?v=2.9.0"></script>
+  <script src="js/main.js?v=3.0.0"></script>
 </body>
 </html>
