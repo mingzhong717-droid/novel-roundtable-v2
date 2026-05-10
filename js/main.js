@@ -146,7 +146,9 @@ function saveUserConfig(c) { localStorage.setItem(STORAGE_KEYS.MODEL_CONFIG, JSO
 const DEFAULT_FRIDAY_APPID = '22041715054660149263';
 let _cachedKeys = null;
 function normalizeKeys(raw) {
-  return { friday: raw.friday || '', deepseek: raw.deepseek || '', openai_compatible: raw.openai_compatible || '', customUrl: raw.customUrl || '' };
+  // friday appid 应为纯数字字符串；如果存了非法值则清空，让 fallback 到默认 appid
+  const friday = (raw.friday && /^\d+$/.test(raw.friday.trim())) ? raw.friday.trim() : '';
+  return { friday, deepseek: raw.deepseek || '', openai_compatible: raw.openai_compatible || '', customUrl: raw.customUrl || '' };
 }
 async function getApiKeys() {
   if (_cachedKeys) return { ..._cachedKeys, friday: _cachedKeys.friday || DEFAULT_FRIDAY_APPID };
@@ -229,13 +231,18 @@ async function callAI(platform, apiKey, model, messages, opts = {}) {
   if (!url) throw new Error('请配置 API 地址');
   if (!apiKey) throw new Error('请配置 ' + pc.name + ' 的 API Key');
   const auth = pc.authType === 'appid' ? apiKey : 'Bearer ' + apiKey;
-  const fetchOpts = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-    body: JSON.stringify({ model, messages, max_tokens: opts.max_tokens || 2000, temperature: opts.temperature || 0.8 })
+  const bodyJson = JSON.stringify({ model, messages, max_tokens: opts.max_tokens || 2000, temperature: opts.temperature || 0.8 });
+  const makeFetchOpts = (authHeader) => {
+    const fo = { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: bodyJson };
+    if (opts.signal) fo.signal = opts.signal;
+    return fo;
   };
-  if (opts.signal) fetchOpts.signal = opts.signal;
-  const res = await fetch(url, fetchOpts);
+  let res = await fetch(url, makeFetchOpts(auth));
+  // friday 平台 401 时，若当前 key 非默认 appid，自动回退到默认 appid 重试
+  if (res.status === 401 && platform === 'friday' && apiKey !== DEFAULT_FRIDAY_APPID) {
+    console.warn('[callAI] friday 401, fallback to DEFAULT_FRIDAY_APPID');
+    res = await fetch(url, makeFetchOpts(DEFAULT_FRIDAY_APPID));
+  }
   if (!res.ok) {
     const friendly = ERROR_MESSAGES[res.status];
     if (friendly) throw new Error(friendly);
