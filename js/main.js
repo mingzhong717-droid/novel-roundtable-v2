@@ -335,8 +335,10 @@ async function runRoundtable(topic, onProgress) {
 }
 
 function cancelRoundtable() {
+  console.log('[NRT] cancelRoundtable called, abortController:', !!store.abortController, 'running:', store.isRoundtableRunning);
   if (store.abortController) {
     store.abortController.abort();
+    console.log('[NRT] abort() called, signal.aborted:', store.abortController.signal.aborted);
     showNotification('已取消讨论请求', 'info');
   }
 }
@@ -375,6 +377,14 @@ document.addEventListener('DOMContentLoaded', function() {
   initEventListeners();
   initSidebar();
   initSessions();
+
+  // 事件委托：处理聊天面板中动态生成的按钮点击
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    if (action === 'cancel-roundtable') cancelRoundtable();
+  });
 });
 
 // ===== Settings Modal =====
@@ -586,7 +596,7 @@ function renderChatMessages() {
     return;
   }
   container.innerHTML = store.chatMessages.map(msg => {
-    if (msg.type === 'system') return `<div class="chat-msg system"><div class="msg-icon">⚡</div><div class="msg-body">${msg.text}</div>${msg.text.includes('⏳') && store.abortController ? '<button class="btn-cancel-roundtable" onclick="cancelRoundtable()" title="取消请求">✕ 取消</button>' : ''}</div>`;
+    if (msg.type === 'system') return `<div class="chat-msg system"><div class="msg-icon">⚡</div><div class="msg-body">${msg.text}</div>${msg.text.includes('⏳') && store.abortController ? '<button class="btn-cancel-roundtable" data-action="cancel-roundtable" title="取消请求">✕ 取消</button>' : ''}</div>`;
     if (msg.type === 'user') return `<div class="chat-msg user"><div class="msg-icon">👤</div><div class="msg-body"><div class="msg-name">你的小说方案</div><div class="msg-text">${escapeHtml(msg.text)}</div></div></div>`;
     if (msg.type === 'progress') return renderProgressPanel(msg);
     if (msg.type === 'results') return renderResultCards(msg);
