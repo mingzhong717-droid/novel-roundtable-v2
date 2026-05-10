@@ -1500,7 +1500,7 @@ function selectExpertAndClose(expertId) {
   }
   closeModal();
   // Scroll to the input area
-  const inputArea = document.getElementById('novelContent') || document.getElementById('textInput');
+  const inputArea = document.getElementById('creativeInput') || document.getElementById('novelContent') || document.getElementById('textInput');
   if (inputArea) {
     inputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
     inputArea.focus();
@@ -1510,7 +1510,7 @@ function selectExpertAndClose(expertId) {
 function useExpertPrompt(expertId) {
   const expert = findExpertCard(expertId);
   if (!expert) return;
-  const input = document.getElementById('novelContent') || document.getElementById('textInput');
+  const input = document.getElementById('creativeInput') || document.getElementById('novelContent') || document.getElementById('textInput');
   if (input) {
     input.value = expert.suggestedPrompt;
     input.dispatchEvent(new Event('input', { bubbles: true }));
