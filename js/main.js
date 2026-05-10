@@ -717,6 +717,9 @@ async function startRoundtable(topic) {
 
   // Update session list
   renderSessionList();
+
+  // Append summary button after results
+  appendSummaryButton();
 }
 
 // ===== Expert Display Data (for homepage cards) =====
@@ -1460,6 +1463,7 @@ function openExpertDetailModal(expertId) {
         <div class="detail-section">
           <h4>推荐提示词</h4>
           <p class="suggested-prompt">${expert.suggestedPrompt}</p>
+          <button class="btn-use-prompt" onclick="useExpertPrompt('${expert.id}')">📋 用这个提示词开始</button>
         </div>
       </div>
       <div class="expert-detail-right">
@@ -1503,9 +1507,117 @@ function selectExpertAndClose(expertId) {
   }
 }
 
+function useExpertPrompt(expertId) {
+  const expert = findExpertCard(expertId);
+  if (!expert) return;
+  const input = document.getElementById('novelContent') || document.getElementById('textInput');
+  if (input) {
+    input.value = expert.suggestedPrompt;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+  }
+  closeModal();
+  input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ===== Expert Summary Report =====
+function appendSummaryButton() {
+  // Find the last results message in chat
+  const chatContainer = document.getElementById('chatMessages');
+  if (!chatContainer) return;
+  const resultsMsgs = chatContainer.querySelectorAll('.results-msg');
+  const lastResults = resultsMsgs[resultsMsgs.length - 1];
+  if (!lastResults) return;
+
+  // Prevent duplicate
+  if (document.getElementById('summaryBtn')) return;
+
+  const btn = document.createElement('div');
+  btn.id = 'summaryBtn';
+  btn.className = 'summary-cta';
+  btn.innerHTML = `
+    <div class="summary-cta-inner">
+      <div class="summary-cta-text">
+        <span class="summary-cta-icon">🧠</span>
+        <div>
+          <strong>综合所有专家意见</strong>
+          <p>让总编辑整合9位专家的观点，给出优先级排序</p>
+        </div>
+      </div>
+      <button class="btn-summary" onclick="runSummaryRoundtable()">生成综合报告</button>
+    </div>
+  `;
+  lastResults.querySelector('.msg-body').appendChild(btn);
+}
+
+async function runSummaryRoundtable() {
+  const results = store.currentResults?.results;
+  if (!results || results.length === 0) return;
+
+  // Show loading state
+  const btn = document.getElementById('summaryBtn');
+  if (btn) btn.innerHTML = '<div class="summary-loading">🧠 总编辑正在综合分析...</div>';
+
+  // Build context from successful results
+  const successResults = results.filter(r => r.success && r.content);
+  if (!successResults.length) {
+    if (btn) btn.innerHTML = '<div class="summary-error">没有可综合的专家意见</div>';
+    return;
+  }
+  const context = successResults.map(r => {
+    const name = r.expert?.name || '专家';
+    return `【${name}的意见】\n${(r.content || '').slice(0, 800)}`;
+  }).join('\n\n---\n\n');
+
+  const summaryPrompt = `以下是9位专家对同一个小说方案的评审意见，请你作为总编辑综合所有观点，输出：
+
+1. **最需要解决的3个核心问题**（跨专家共识，按严重程度排序）
+2. **被多位专家提到的亮点**（值得保留的）
+3. **建议的修改优先级**：第一步改什么，第二步改什么
+
+要求：简洁有力，不超过400字，不重复专家原话，直接给结论。
+
+---
+
+${context}`;
+
+  const chiefEditor = EXPERTS.find(e => e.id === 'chief-editor');
+  if (!chiefEditor) return;
+
+  try {
+    const cfg = getUserConfig();
+    const modelId = getModelForExpert('chief-editor', cfg);
+    const modelInfo = AVAILABLE_MODELS[modelId];
+    if (!modelInfo) throw new Error('总编辑模型配置不存在');
+    const keys = await getApiKeys();
+    const apiKey = keys[modelInfo.platform];
+    if (!apiKey) throw new Error('未配置 ' + API_PLATFORMS[modelInfo.platform].name + ' Key');
+
+    const response = await callAI(modelInfo.platform, apiKey, modelId, [
+      { role: 'system', content: chiefEditor.systemPrompt },
+      { role: 'user', content: summaryPrompt }
+    ], { temperature: chiefEditor.temperature, max_tokens: 2000 });
+
+    if (btn) {
+      btn.className = 'summary-result';
+      btn.innerHTML = `
+        <div class="summary-result-header">
+          <span>🧠</span>
+          <strong>总编辑综合报告</strong>
+        </div>
+        <div class="summary-result-content">${renderMarkdown(response)}</div>
+      `;
+    }
+  } catch (err) {
+    if (btn) btn.innerHTML = `<div class="summary-error">综合分析失败：${escapeHtml(err.message)}</div>`;
+  }
+}
+
 // Expose to window for potential onclick usage
 window.openExpertDetailModal = openExpertDetailModal;
 window.selectExpertAndClose = selectExpertAndClose;
+window.useExpertPrompt = useExpertPrompt;
+window.runSummaryRoundtable = runSummaryRoundtable;
 
 // ===== Sidebar =====
 function initSidebar() {

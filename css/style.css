@@ -451,7 +451,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .detail-list li{font-size:var(--text-sm);color:var(--text-secondary);line-height:1.8;padding-left:16px;position:relative}
 .detail-list li::before{content:'•';position:absolute;left:0;color:var(--primary-light);font-weight:700}
 .suggested-prompt{padding:10px 14px;background:rgba(108,92,231,.06);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:var(--text-sm);color:var(--text-secondary);line-height:1.7;font-style:italic}
+.btn-use-prompt{margin-top:10px;width:100%;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-size:var(--text-sm);cursor:pointer;transition:opacity .2s}
+.btn-use-prompt:hover{opacity:.85}
 @media(max-width:600px){.expert-detail-layout{flex-direction:column;gap:16px}}
+
+/* ===== Expert Summary Report ===== */
+.summary-cta{margin-top:24px;border-radius:var(--radius);border:1px dashed var(--border);background:rgba(108,92,231,.04);padding:20px}
+.summary-cta-inner{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.summary-cta-text{display:flex;align-items:center;gap:12px}
+.summary-cta-icon{font-size:28px}
+.summary-cta-text strong{display:block;font-size:var(--text-sm);color:var(--text-primary)}
+.summary-cta-text p{margin:2px 0 0;font-size:12px;color:var(--text-muted)}
+.btn-summary{padding:10px 20px;background:var(--gradient-1);color:#fff;border:none;border-radius:var(--radius-sm);font-size:var(--text-sm);font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .2s}
+.btn-summary:hover{opacity:.85}
+.summary-loading{text-align:center;color:var(--text-muted);font-size:var(--text-sm);padding:12px}
+.summary-result{padding:20px}
+.summary-result-header{display:flex;align-items:center;gap:8px;font-size:15px;margin-bottom:12px}
+.summary-result-content{font-size:var(--text-sm);line-height:1.8;color:var(--text-secondary)}
+.summary-error{color:var(--error,#e55);font-size:var(--text-sm);text-align:center;padding:12px}
 
 /* ===== Settings Modal ===== */
 .settings-modal{max-width:640px;max-height:85vh}
