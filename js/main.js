@@ -1404,8 +1404,15 @@ function closeModal() {
   const modal = document.getElementById('modalOverlay');
   modal?.classList.remove('active');
   modal?.classList.remove('expert-detail-mode');
-  document.getElementById('modalInvite').style.display = '';
-  document.getElementById('modalCancel').style.display = '';
+  // Reset footer buttons to default state
+  const inviteBtn = document.getElementById('modalInvite');
+  const cancelBtn = document.getElementById('modalCancel');
+  inviteBtn.style.display = '';
+  inviteBtn.textContent = '让 TA 加入圆桌会';
+  inviteBtn.onclick = null;
+  cancelBtn.style.display = '';
+  cancelBtn.textContent = '关闭';
+  cancelBtn.onclick = null;
 }
 
 // ===== Expert Detail Modal (Mode B: single expert) =====
