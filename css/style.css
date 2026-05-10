@@ -473,7 +473,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 
 /* ===== Settings Modal ===== */
 .settings-modal{max-width:640px;max-height:85vh}
-.settings-modal .modal-body{overflow-y:auto;max-height:calc(85vh - 180px)}
+.settings-modal .modal-body{overflow-y:auto;max-height:calc(85vh - 180px);overscroll-behavior:contain}
 .settings-modal .modal-header h2{font-size:var(--text-lg);font-weight:700}
 .settings-modal .modal-header p{font-size:var(--text-sm);color:var(--text-muted);margin-top:4px}
 .settings-form{display:flex;flex-direction:column;gap:20px}
